@@ -221,7 +221,7 @@ const App = () => {
                 `}
             </style>
             <div className="w-full max-w-2xl bg-gray-100 p-8 rounded-2xl shadow-xl space-y-6">
-                <h1 className="text-4xl font-bold text-center text-teal-600">Sentence Analyser</h1>
+                <h1 style={{ fontSize: '2rem', color: 'blue', textAlign: 'center' }}>Sentence Analyser</h1>
                 <p className="text-center text-gray-500">
                     Enter a sentence for analysis. Now works offline with built-in analysis!
                 </p>
