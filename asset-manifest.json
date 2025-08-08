@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/sentenceanalyser/static/js/main.3dd03c12.js",
+    "index.html": "/sentenceanalyser/index.html",
+    "main.3dd03c12.js.map": "/sentenceanalyser/static/js/main.3dd03c12.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.3dd03c12.js"
+  ]
+}
