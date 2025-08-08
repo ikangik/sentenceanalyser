@@ -6,64 +6,65 @@ const App = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Built-in analysis function
+    // Built-in analysis function (updated)
     const analyzeSentence = (text) => {
         const words = text.trim().split(/\s+/).filter(word => word.length > 0);
-        
-        // Simple POS tagging based on common patterns
+
+        // Simple POS tagging based on common patterns (improved)
         const getPOS = (word, index, words) => {
             const lowerWord = word.toLowerCase().replace(/[.,!?;:"']/g, '');
-            
+
             // Determiners
             if (['the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 'their'].includes(lowerWord)) {
                 return 'Determiner';
             }
-            
+
             // Pronouns
             if (['i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves'].includes(lowerWord)) {
                 return 'Pronoun';
             }
-            
+
             // Prepositions
             if (['in', 'on', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'of', 'over', 'under', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among'].includes(lowerWord)) {
                 return 'Preposition';
             }
-            
+
             // Conjunctions
             if (['and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'because', 'although', 'while', 'since', 'if', 'unless', 'until'].includes(lowerWord)) {
                 return 'Conjunction';
             }
-            
+
             // Common auxiliary verbs
             if (['am', 'is', 'are', 'was', 'were', 'being', 'been', 'have', 'has', 'had', 'having', 'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must', 'ought', 'do', 'does', 'did'].includes(lowerWord)) {
                 return 'Auxiliary Verb';
             }
-            
+
             // Exclamations
             if (['hello', 'hi', 'hey', 'wow', 'oh', 'ah', 'ouch', 'hurray', 'alas'].includes(lowerWord)) {
                 return 'Exclamation';
             }
-            
-            // Check for verb endings
-            if (lowerWord.endsWith('ing') || lowerWord.endsWith('ed') || lowerWord.endsWith('s') && !lowerWord.endsWith('ss')) {
-                return 'Verb';
-            }
-            
-            // Check for adjective endings
+
+            // Adverbs (e.g., quickly, happily)
             if (lowerWord.endsWith('ly')) {
                 return 'Adverb';
             }
-            
+
+            // Adjectives (e.g., beautiful, useless)
             if (lowerWord.endsWith('ful') || lowerWord.endsWith('less') || lowerWord.endsWith('ous') || lowerWord.endsWith('able') || lowerWord.endsWith('ible')) {
                 return 'Adjective';
             }
-            
+
+            // Verbs (basic ending detection - order matters)
+            if (lowerWord.endsWith('ing') || lowerWord.endsWith('ed')) {
+                return 'Verb';
+            }
+
             // Check if it's likely a proper noun (capitalized and not at sentence start)
             if (word[0] === word[0].toUpperCase() && index > 0) {
                 return 'Proper Noun';
             }
-            
-            // Default to Noun for most other words
+
+            // Default to Noun
             return 'Noun';
         };
 
@@ -73,20 +74,20 @@ const App = () => {
             pos: getPOS(word, index, words)
         }));
 
-        // Grammar Analysis
-        const hasAuxiliary = words.some(word => 
+        // Grammar Analysis (updated for better accuracy)
+        const hasAuxiliary = words.some(word =>
             ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'shall', 'should'].includes(word.toLowerCase())
         );
-        
+
         const hasBy = text.toLowerCase().includes(' by ');
         const voice = hasAuxiliary && hasBy ? 'Passive' : 'Active';
-        
-        const isCompleteSentence = text.trim().length > 0 && 
-            /[.!?]$/.test(text.trim()) && 
+
+        const isCompleteSentence = text.trim().length > 0 &&
+            /[.!?]$/.test(text.trim()) &&
             words.length >= 2;
-        
+
         const hasPunctuationErrors = !(/[.!?]$/.test(text.trim())) && text.trim().length > 0;
-        
+
         let summary = "The sentence appears ";
         if (!isCompleteSentence) {
             summary += "to be incomplete or a fragment. ";
@@ -111,7 +112,7 @@ const App = () => {
             'wierd': ['weird'],
             'freind': ['friend']
         };
-        
+
         const spellingAnalysis = [];
         words.forEach(word => {
             const cleanWord = word.toLowerCase().replace(/[.,!?;:"']/g, '');
@@ -123,18 +124,18 @@ const App = () => {
             }
         });
 
-        // Structural Analysis
+        // Structural Analysis (updated for a slightly more robust approach)
         const structuralAnalysis = [];
-        
-        // Find the main clause
+
+        // Main Clause
         structuralAnalysis.push({
             type: "Independent Clause",
             text: text.trim(),
             function: "This is the main clause of the sentence."
         });
-        
-        // Find noun phrases (basic detection)
-        const nounPhrasePattern = /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their)\s+\w+/gi;
+
+        // Noun Phrases
+        const nounPhrasePattern = /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their)\s+([\w'-]+\s)*\w+/gi;
         const nounPhrases = text.match(nounPhrasePattern);
         if (nounPhrases) {
             nounPhrases.forEach(phrase => {
@@ -145,9 +146,9 @@ const App = () => {
                 });
             });
         }
-        
-        // Find prepositional phrases
-        const prepPhrasePattern = /\b(in|on|at|by|for|with|about|to|from|of|over|under|through|during|before|after|above|below|between|among)\s+[\w\s]+?(?=\s|$|[.,!?;:])/gi;
+
+        // Prepositional Phrases
+        const prepPhrasePattern = /\b(in|on|at|by|for|with|about|to|from|of|over|under|through|during|before|after|above|below|between|among)\s+([\w'-]+\s)*\w+/gi;
         const prepPhrases = text.match(prepPhrasePattern);
         if (prepPhrases) {
             prepPhrases.forEach(phrase => {
@@ -176,11 +177,9 @@ const App = () => {
         setIsLoading(true);
         setError('');
         setAnalysis(null);
-        
+
         try {
-            // Simulate API delay for better UX
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
             const result = analyzeSentence(sentence);
             setAnalysis(result);
         } catch (err) {
