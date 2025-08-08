@@ -9,6 +9,7 @@ const App = () => {
     // Built-in analysis function (updated)
     const analyzeSentence = (text) => {
         const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+        const sanitizedWords = words.map(word => word.toLowerCase().replace(/[.,!?;:"']/g, ''));
 
         // Simple POS tagging based on common patterns (improved)
         const getPOS = (word, index, words) => {
@@ -83,6 +84,15 @@ const App = () => {
             return subordinators.includes(word.toLowerCase().replace(/[.,!?;:"']/g, ''));
         };
 
+        // Helper to identify participial phrases at the beginning of a sentence
+        const isParticipialPhrase = (words) => {
+            const firstWord = words[0];
+            if (!firstWord) return false;
+            const cleanFirstWord = firstWord.toLowerCase().replace(/[.,!?;:"']/g, '');
+            const hasComma = words.some(word => word.endsWith(','));
+            return (cleanFirstWord.endsWith('ing') || cleanFirstWord.endsWith('ed')) && hasComma;
+        };
+
         // Grammar Analysis (updated for better accuracy)
         const hasAuxiliary = words.some(word =>
             ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'shall', 'should'].includes(word.toLowerCase())
@@ -92,10 +102,12 @@ const App = () => {
         const voice = hasAuxiliary && hasBy ? 'Passive' : 'Active';
 
         const startsWithSubordinator = words.length > 0 && isSubordinatingConjunction(words[0]);
+        const startsWithParticipialPhrase = isParticipialPhrase(words);
 
         const isCompleteSentence = text.trim().length > 0 &&
             /[.!?]$/.test(text.trim()) &&
             hasVerb &&
+            !startsWithParticipialPhrase &&
             (!startsWithSubordinator || (startsWithSubordinator && text.includes(',')));
 
         const hasPunctuationErrors = !(/[.!?]$/.test(text.trim())) && text.trim().length > 0;
@@ -136,11 +148,26 @@ const App = () => {
             }
         });
 
-        // Structural Analysis (updated for a slightly more robust approach)
+        // Structural Analysis (updated for better accuracy with participial phrases)
         const structuralAnalysis = [];
 
-        // Dependent Clause (if applicable)
-        if (startsWithSubordinator) {
+        if (startsWithParticipialPhrase) {
+            const commaIndex = text.indexOf(',');
+            const participialPhraseText = text.substring(0, commaIndex + 1);
+            const independentClauseText = text.substring(commaIndex + 1);
+            
+            structuralAnalysis.push({
+                type: "Participial Phrase",
+                text: participialPhraseText.trim(),
+                function: "A verb phrase acting as an adjective. It cannot stand alone as a sentence."
+            });
+            structuralAnalysis.push({
+                type: "Independent Clause",
+                text: independentClauseText.trim(),
+                function: "The main clause of the sentence."
+            });
+
+        } else if (startsWithSubordinator) {
             const commaIndex = text.indexOf(',');
             if (commaIndex !== -1) {
                 const dependentClauseText = text.substring(0, commaIndex + 1);
