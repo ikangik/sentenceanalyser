@@ -1,1 +1,18 @@
-cd /path/to/your/project
+{
+  "name": "your-app",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": "https://<ikangik>.github.io/sentenceanalyser",
+  "dependencies": {
+    ...
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    ...
+  }
+}
