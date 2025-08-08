@@ -1,28 +1,4 @@
 import React, { useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-
-// The following global variables are provided by the Canvas environment.
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Sign in with custom token or anonymously
-const signIn = async () => {
-  try {
-    if (initialAuthToken) {
-      await signInWithCustomToken(auth, initialAuthToken);
-    } else {
-      await signInAnonymously(auth);
-    }
-  } catch (error) {
-    console.error("Firebase sign-in failed:", error);
-  }
-};
 
 const App = () => {
     const [sentence, setSentence] = useState('');
@@ -30,146 +6,183 @@ const App = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // Built-in analysis function
+    const analyzeSentence = (text) => {
+        const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+        
+        // Simple POS tagging based on common patterns
+        const getPOS = (word, index, words) => {
+            const lowerWord = word.toLowerCase().replace(/[.,!?;:"']/g, '');
+            
+            // Determiners
+            if (['the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 'their'].includes(lowerWord)) {
+                return 'Determiner';
+            }
+            
+            // Pronouns
+            if (['i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves'].includes(lowerWord)) {
+                return 'Pronoun';
+            }
+            
+            // Prepositions
+            if (['in', 'on', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'of', 'over', 'under', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among'].includes(lowerWord)) {
+                return 'Preposition';
+            }
+            
+            // Conjunctions
+            if (['and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'because', 'although', 'while', 'since', 'if', 'unless', 'until'].includes(lowerWord)) {
+                return 'Conjunction';
+            }
+            
+            // Common auxiliary verbs
+            if (['am', 'is', 'are', 'was', 'were', 'being', 'been', 'have', 'has', 'had', 'having', 'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must', 'ought', 'do', 'does', 'did'].includes(lowerWord)) {
+                return 'Auxiliary Verb';
+            }
+            
+            // Exclamations
+            if (['hello', 'hi', 'hey', 'wow', 'oh', 'ah', 'ouch', 'hurray', 'alas'].includes(lowerWord)) {
+                return 'Exclamation';
+            }
+            
+            // Check for verb endings
+            if (lowerWord.endsWith('ing') || lowerWord.endsWith('ed') || lowerWord.endsWith('s') && !lowerWord.endsWith('ss')) {
+                return 'Verb';
+            }
+            
+            // Check for adjective endings
+            if (lowerWord.endsWith('ly')) {
+                return 'Adverb';
+            }
+            
+            if (lowerWord.endsWith('ful') || lowerWord.endsWith('less') || lowerWord.endsWith('ous') || lowerWord.endsWith('able') || lowerWord.endsWith('ible')) {
+                return 'Adjective';
+            }
+            
+            // Check if it's likely a proper noun (capitalized and not at sentence start)
+            if (word[0] === word[0].toUpperCase() && index > 0) {
+                return 'Proper Noun';
+            }
+            
+            // Default to Noun for most other words
+            return 'Noun';
+        };
+
+        // POS Analysis
+        const posAnalysis = words.map((word, index) => ({
+            word: word,
+            pos: getPOS(word, index, words)
+        }));
+
+        // Grammar Analysis
+        const hasAuxiliary = words.some(word => 
+            ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'shall', 'should'].includes(word.toLowerCase())
+        );
+        
+        const hasBy = text.toLowerCase().includes(' by ');
+        const voice = hasAuxiliary && hasBy ? 'Passive' : 'Active';
+        
+        const isCompleteSentence = text.trim().length > 0 && 
+            /[.!?]$/.test(text.trim()) && 
+            words.length >= 2;
+        
+        const hasPunctuationErrors = !(/[.!?]$/.test(text.trim())) && text.trim().length > 0;
+        
+        let summary = "The sentence appears ";
+        if (!isCompleteSentence) {
+            summary += "to be incomplete or a fragment. ";
+        } else {
+            summary += "to be grammatically complete. ";
+        }
+        summary += `It uses ${voice.toLowerCase()} voice.`;
+        if (hasPunctuationErrors) {
+            summary += " Consider adding proper punctuation.";
+        }
+
+        // Spelling Analysis (basic check for common misspellings)
+        const commonMisspellings = {
+            'recieve': ['receive'],
+            'definately': ['definitely'],
+            'seperate': ['separate'],
+            'occured': ['occurred'],
+            'neccessary': ['necessary'],
+            'accomodate': ['accommodate'],
+            'embarass': ['embarrass'],
+            'mispell': ['misspell'],
+            'wierd': ['weird'],
+            'freind': ['friend']
+        };
+        
+        const spellingAnalysis = [];
+        words.forEach(word => {
+            const cleanWord = word.toLowerCase().replace(/[.,!?;:"']/g, '');
+            if (commonMisspellings[cleanWord]) {
+                spellingAnalysis.push({
+                    misspelledWord: word,
+                    suggestions: commonMisspellings[cleanWord]
+                });
+            }
+        });
+
+        // Structural Analysis
+        const structuralAnalysis = [];
+        
+        // Find the main clause
+        structuralAnalysis.push({
+            type: "Independent Clause",
+            text: text.trim(),
+            function: "This is the main clause of the sentence."
+        });
+        
+        // Find noun phrases (basic detection)
+        const nounPhrasePattern = /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their)\s+\w+/gi;
+        const nounPhrases = text.match(nounPhrasePattern);
+        if (nounPhrases) {
+            nounPhrases.forEach(phrase => {
+                structuralAnalysis.push({
+                    type: "Noun Phrase",
+                    text: phrase.trim(),
+                    function: "Acts as a noun in the sentence."
+                });
+            });
+        }
+        
+        // Find prepositional phrases
+        const prepPhrasePattern = /\b(in|on|at|by|for|with|about|to|from|of|over|under|through|during|before|after|above|below|between|among)\s+[\w\s]+?(?=\s|$|[.,!?;:])/gi;
+        const prepPhrases = text.match(prepPhrasePattern);
+        if (prepPhrases) {
+            prepPhrases.forEach(phrase => {
+                structuralAnalysis.push({
+                    type: "Prepositional Phrase",
+                    text: phrase.trim(),
+                    function: "Modifies other words by showing relationships."
+                });
+            });
+        }
+
+        return {
+            posAnalysis,
+            grammarAnalysis: {
+                voice,
+                isCompleteSentence,
+                hasPunctuationErrors,
+                summary
+            },
+            spellingAnalysis,
+            structuralAnalysis
+        };
+    };
+
     const handleAnalyse = async () => {
         setIsLoading(true);
         setError('');
         setAnalysis(null);
         
-        await signIn();
-
-        // The prompt will instruct the model to analyse the sentence and provide a structured JSON response
-        const prompt = `Analyse the following English sentence for grammar, spelling, and sentence structure and return a single JSON object. The grammatical and spelling rules for this analysis should be based on the standards of the Oxford English Dictionary (Australian spelling). Ensure that words like 'capitalisation' and 'capitalise' are used instead of their American English counterparts.
-        
-        The JSON object should have four top-level keys:
-        1.  "posAnalysis": An array of objects. Each object should have two properties: "word" (the word itself) and "pos" (its part of speech, using the full word, not an acronym, e.g., "Noun", "Verb", "Adjective"). Please use "Exclamation" instead of "Interjection". For words like "hello", identify them as "Exclamation" unless the context clearly indicates a different function (e.g., "She gave a hello" where "hello" would be a Noun).
-        2.  "grammarAnalysis": An object with the following properties:
-            - "voice": A string indicating if the sentence is "Active" or "Passive".
-            - "isCompleteSentence": a boolean indicating if it's a complete sentence.
-            - "hasPunctuationErrors": a boolean indicating if there are punctuation issues.
-            - "summary": A string providing a brief, one-sentence summary of any grammatical issues, including dependent clauses, syntax errors, and **incorrect use of capital letters**.
-        3.  "spellingAnalysis": An array of objects. Each object should represent a misspelled word and contain:
-            - "misspelledWord": The incorrect word found in the sentence.
-            - "suggestions": An array of strings with potential correct spellings for that word.
-        4.  "structuralAnalysis": An array of objects. Each object should represent a specific clause or phrase found in the sentence. Each object should contain:
-            - "type": A string indicating the type of clause or phrase (e.g., "Independent Clause", "Noun Phrase", "Prepositional Phrase", "Participial Phrase", etc.).
-            - "text": The exact text of the clause or phrase.
-            - "function": A short string explaining what this clause or phrase does in the sentence.
-        
-        For multi-word verb phrases, like "was read", identify "was" as "Auxiliary Verb" and "read" as "Verb". "We organised" should correctly identify "we" as "Pronoun" and "organised" as "Verb".
-
-        Sentence: "${sentence}"
-        
-        Example of desired output:
-        {
-          "posAnalysis": [
-            { "word": "The", "pos": "Determiner" },
-            { "word": "book", "pos": "Noun" },
-            { "word": "was", "pos": "Auxiliary Verb" },
-            { "word": "read", "pos": "Verb" },
-            { "word": "by", "pos": "Preposition" },
-            { "word": "the", "pos": "Determiner" },
-            { "word": "student", "pos": "Noun" }
-          ],
-          "grammarAnalysis": {
-            "voice": "Passive",
-            "isCompleteSentence": true,
-            "hasPunctuationErrors": false,
-            "summary": "The sentence is grammatically correct and uses the passive voice."
-          },
-          "spellingAnalysis": [
-            {
-              "misspelledWord": "seantence",
-              "suggestions": ["sentence", "sentience"]
-            }
-          ],
-          "structuralAnalysis": [
-            { "type": "Independent Clause", "text": "The book was read by the student.", "function": "This is the main part of the sentence and can stand alone." },
-            { "type": "Noun Phrase", "text": "The book", "function": "Acts as the subject of the sentence." },
-            { "type": "Prepositional Phrase", "text": "by the student", "function": "Modifies the verb 'was read' by indicating the doer of the action." }
-          ]
-        }`;
-
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                        "posAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "word": { "type": "STRING" },
-                                    "pos": { "type": "STRING" }
-                                },
-                                "propertyOrdering": ["word", "pos"]
-                            }
-                        },
-                        "grammarAnalysis": {
-                            "type": "OBJECT",
-                            "properties": {
-                                "voice": { "type": "STRING" },
-                                "isCompleteSentence": { "type": "BOOLEAN" },
-                                "hasPunctuationErrors": { "type": "BOOLEAN" },
-                                "summary": { "type": "STRING" }
-                            },
-                            "propertyOrdering": ["voice", "isCompleteSentence", "hasPunctuationErrors", "summary"]
-                        },
-                        "spellingAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "misspelledWord": { "type": "STRING" },
-                                    "suggestions": { "type": "ARRAY", "items": { "type": "STRING" } }
-                                },
-                                "propertyOrdering": ["misspelledWord", "suggestions"]
-                            }
-                        },
-                        "structuralAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "type": { "type": "STRING" },
-                                    "text": { "type": "STRING" },
-                                    "function": { "type": "STRING" }
-                                },
-                                "propertyOrdering": ["type", "text", "function"]
-                            }
-                        }
-                    },
-                    "propertyOrdering": ["posAnalysis", "grammarAnalysis", "spellingAnalysis", "structuralAnalysis"]
-                }
-            }
-        };
-
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
         try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error.message);
-            }
-
-            const result = await response.json();
-            const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            // Simulate API delay for better UX
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            if (jsonText) {
-                const parsedJson = JSON.parse(jsonText);
-                setAnalysis(parsedJson);
-            } else {
-                throw new Error("API response was empty or malformed.");
-            }
+            const result = analyzeSentence(sentence);
+            setAnalysis(result);
         } catch (err) {
             console.error("Error analysing sentence:", err);
             setError(`Failed to analyse sentence: ${err.message}`);
@@ -211,7 +224,7 @@ const App = () => {
             <div className="w-full max-w-2xl bg-gray-100 p-8 rounded-2xl shadow-xl space-y-6">
                 <h1 className="text-4xl font-bold text-center text-teal-600">Sentence Analyser</h1>
                 <p className="text-center text-gray-500">
-                    Enter a sentence for analysis.
+                    Enter a sentence for analysis. Now works offline with built-in analysis!
                 </p>
                 <div className="flex flex-col space-y-4">
                     <input
