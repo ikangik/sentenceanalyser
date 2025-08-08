@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 
-// The following global variables are provided by the Canvas environment.
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+// IMPORTANT: This version is for local use and requires a .env file with your API key.
+// The Firebase config below is a placeholder and is not needed for this app's current functionality.
+const firebaseConfig = {
+    apiKey: "dummy-api-key",
+    authDomain: "dummy-auth-domain.firebaseapp.com",
+    projectId: "dummy-project-id"
+};
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Sign in with custom token or anonymously
+// Sign in anonymously, as authentication is not required for the API call in this app.
 const signIn = async () => {
-  try {
-    if (initialAuthToken) {
-      await signInWithCustomToken(auth, initialAuthToken);
-    } else {
-      await signInAnonymously(auth);
+    try {
+        await signInAnonymously(auth);
+    } catch (error) {
+        console.error("Firebase sign-in failed:", error);
     }
-  } catch (error) {
-    console.error("Firebase sign-in failed:", error);
-  }
 };
 
 const App = () => {
@@ -89,65 +88,15 @@ const App = () => {
           ]
         }`;
 
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                        "posAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "word": { "type": "STRING" },
-                                    "pos": { "type": "STRING" }
-                                },
-                                "propertyOrdering": ["word", "pos"]
-                            }
-                        },
-                        "grammarAnalysis": {
-                            "type": "OBJECT",
-                            "properties": {
-                                "voice": { "type": "STRING" },
-                                "isCompleteSentence": { "type": "BOOLEAN" },
-                                "hasPunctuationErrors": { "type": "BOOLEAN" },
-                                "summary": { "type": "STRING" }
-                            },
-                            "propertyOrdering": ["voice", "isCompleteSentence", "hasPunctuationErrors", "summary"]
-                        },
-                        "spellingAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "misspelledWord": { "type": "STRING" },
-                                    "suggestions": { "type": "ARRAY", "items": { "type": "STRING" } }
-                                },
-                                "propertyOrdering": ["misspelledWord", "suggestions"]
-                            }
-                        },
-                        "structuralAnalysis": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "type": { "type": "STRING" },
-                                    "text": { "type": "STRING" },
-                                    "function": { "type": "STRING" }
-                                },
-                                "propertyOrdering": ["type", "text", "function"]
-                            }
-                        }
-                    },
-                    "propertyOrdering": ["posAnalysis", "grammarAnalysis", "spellingAnalysis", "structuralAnalysis"]
-                }
-            }
-        };
-
-        const apiKey = "";
+        const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // Simple check to ensure API key is present
+        if (!apiKey) {
+            setError("API key not found. Please check your .env file.");
+            setIsLoading(false);
+            return;
+        }
 
         try {
             const response = await fetch(apiUrl, {
@@ -319,4 +268,3 @@ const App = () => {
 };
 
 export default App;
-
