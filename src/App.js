@@ -6,92 +6,66 @@ const App = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
+    /**
+     * Performs a built-in grammatical analysis of a sentence.
+     * This function is designed to work offline.
+     * @param {string} text The sentence to be analyzed.
+     * @returns {object} The analysis results, including POS, grammar, and structure.
+     */
     const analyzeSentence = (text) => {
         const words = text.trim().split(/\s+/).filter(word => word.length > 0);
         const sanitizedWords = words.map(word => word.toLowerCase().replace(/[.,!?;:"']/g, ''));
 
-        const getPOS = (word, index, words) => {
+        // A simple POS tagging function based on common word patterns and lists
+        const getPOS = (word, index) => {
             const lowerWord = sanitizedWords[index];
+            const originalWord = words[index];
 
-            if (['the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 'their'].includes(lowerWord)) {
-                return 'Determiner';
-            }
+            // Common parts of speech
+            const determiners = ['the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 'their'];
+            const pronouns = ['i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves'];
+            const prepositions = ['in', 'on', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'of', 'over', 'under', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among'];
+            const conjunctions = ['and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'because', 'although', 'while', 'since', 'if', 'unless', 'until'];
+            const auxiliaries = ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'having', 'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must', 'ought', 'do', 'does', 'did'];
 
-            if (['i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves'].includes(lowerWord)) {
-                return 'Pronoun';
-            }
-
-            if (['in', 'on', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'of', 'over', 'under', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among'].includes(lowerWord)) {
-                return 'Preposition';
-            }
-
-            if (['and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'because', 'although', 'while', 'since', 'if', 'unless', 'until'].includes(lowerWord)) {
-                return 'Conjunction';
-            }
-
-            if (['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'having', 'will', 'would', 'shall', 'should', 'may', 'might', 'can', 'could', 'must', 'ought', 'do', 'does', 'did'].includes(lowerWord)) {
-                return 'Auxiliary Verb';
-            }
-
-            if (['hello', 'hi', 'hey', 'wow', 'oh', 'ah', 'ouch', 'hurray', 'alas'].includes(lowerWord)) {
-                return 'Exclamation';
-            }
-
-            if (lowerWord.endsWith('ly')) {
-                return 'Adverb';
-            }
-
-            if (lowerWord.endsWith('ful') || lowerWord.endsWith('less') || lowerWord.endsWith('ous') || lowerWord.endsWith('able') || lowerWord.endsWith('ible')) {
-                return 'Adjective';
-            }
-
-            if (lowerWord.endsWith('ing') || lowerWord.endsWith('ed')) {
-                return 'Verb';
-            }
-
-            if (word[0] === word[0].toUpperCase() && index > 0) {
-                return 'Proper Noun';
-            }
+            if (determiners.includes(lowerWord)) return 'Determiner';
+            if (pronouns.includes(lowerWord)) return 'Pronoun';
+            if (prepositions.includes(lowerWord)) return 'Preposition';
+            if (conjunctions.includes(lowerWord)) return 'Conjunction';
+            if (auxiliaries.includes(lowerWord)) return 'Auxiliary Verb';
+            
+            // Heuristic checks
+            if (lowerWord.endsWith('ly')) return 'Adverb';
+            if (lowerWord.endsWith('ing') || lowerWord.endsWith('ed')) return 'Verb';
+            if (originalWord[0] === originalWord[0].toUpperCase() && index > 0) return 'Proper Noun';
 
             return 'Noun';
         };
 
         const posAnalysis = words.map((word, index) => ({
             word: word,
-            pos: getPOS(word, index, words)
+            pos: getPOS(word, index)
         }));
 
         const hasVerb = posAnalysis.some(item => ['Verb', 'Auxiliary Verb'].includes(item.pos));
 
-        const isSubordinatingConjunction = (word) => {
-            const subordinators = ['after', 'although', 'as', 'because', 'before', 'if', 'since', 'that', 'though', 'unless', 'until', 'when', 'where', 'while'];
-            return subordinators.includes(word);
-        };
+        // Check for common grammatical issues
+        const startsWithSubordinator = ['after', 'although', 'as', 'because', 'before', 'if', 'since', 'that', 'though', 'unless', 'until', 'when', 'where', 'while'].includes(sanitizedWords[0]);
+        const startsWithParticiple = (sanitizedWords[0]?.endsWith('ing') || sanitizedWords[0]?.endsWith('ed')) && text.includes(',');
+        
+        // New logic to detect a dangling participle, a common fragment type.
+        // Heuristic: starts with a participle, has a comma, and the next word is a pronoun
+        // which often leads to a mismatched subject.
+        const commaIndex = text.indexOf(',');
+        const afterCommaWords = commaIndex !== -1 ? text.substring(commaIndex + 1).trim().split(/\s+/).filter(word => word.length > 0) : [];
+        const isDanglingParticiple = startsWithParticiple && (['i', 'you', 'he', 'she', 'it', 'we', 'they'].includes(afterCommaWords[0]?.toLowerCase()));
 
-        const isParticipialPhrase = (sanitizedWords) => {
-            const firstWord = sanitizedWords[0];
-            if (!firstWord) return false;
-            const hasComma = words.some(word => word.endsWith(','));
-            return (firstWord.endsWith('ing') || firstWord.endsWith('ed')) && hasComma;
-        };
-
-        const hasAuxiliary = sanitizedWords.some(word =>
-            ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'shall', 'should'].includes(word)
-        );
-
-        const hasBy = sanitizedWords.includes('by');
-        const voice = hasAuxiliary && hasBy ? 'Passive' : 'Active';
-
-        const startsWithSubordinator = sanitizedWords.length > 0 && isSubordinatingConjunction(sanitizedWords[0]);
-        const startsWithParticipialPhrase = isParticipialPhrase(sanitizedWords);
-
-        const isCompleteSentence = text.trim().length > 0 &&
-            /[.!?]$/.test(text.trim()) &&
-            hasVerb &&
-            !startsWithParticipialPhrase &&
-            (!startsWithSubordinator || (startsWithSubordinator && text.includes(',')));
+        // The core logic update for isCompleteSentence
+        const isCompleteSentence = hasVerb && text.trim().length > 0 && /[.!?]$/.test(text.trim()) && !startsWithSubordinator && !isDanglingParticiple;
 
         const hasPunctuationErrors = !(/[.!?]$/.test(text.trim())) && text.trim().length > 0;
+
+        const voice = sanitizedWords.includes('by') && sanitizedWords.some(word => ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had'].includes(word)) ? 'Passive' : 'Active';
 
         let summary = "The sentence appears ";
         if (!isCompleteSentence) {
@@ -99,38 +73,19 @@ const App = () => {
         } else {
             summary += "to be grammatically complete. ";
         }
-        summary += `It uses ${voice.toLowerCase()} voice.`;
-        if (hasPunctuationErrors) {
-            summary += " Consider adding proper punctuation.";
-        }
-
-        const commonMisspellings = {
-            'recieve': ['receive'],
-            'definately': ['definitely'],
-            'seperate': ['separate'],
-            'occured': ['occurred'],
-            'neccessary': ['necessary'],
-            'accomodate': ['accommodate'],
-            'embarass': ['embarrass'],
-            'mispell': ['misspell'],
-            'wierd': ['weird'],
-            'freind': ['friend']
-        };
-
-        const spellingAnalysis = [];
-        sanitizedWords.forEach((word, index) => {
-            if (commonMisspellings[word]) {
-                spellingAnalysis.push({
-                    misspelledWord: words[index],
-                    suggestions: commonMisspellings[word]
-                });
+        if (isDanglingParticiple) {
+            summary += "A dangling participle was detected, making the sentence a fragment.";
+        } else {
+             summary += `It uses ${voice.toLowerCase()} voice.`;
+             if (hasPunctuationErrors) {
+                summary += " Consider adding proper punctuation.";
             }
-        });
-
+        }
+        
+        // Detailed structural analysis to show the user the different parts
         const structuralAnalysis = [];
-
-        if (startsWithParticipialPhrase) {
-            const commaIndex = text.indexOf(',');
+        
+        if (startsWithParticiple) {
             const participialPhraseText = text.substring(0, commaIndex + 1);
             const independentClauseText = text.substring(commaIndex + 1);
             
@@ -142,24 +97,22 @@ const App = () => {
             structuralAnalysis.push({
                 type: "Independent Clause",
                 text: independentClauseText.trim(),
-                function: "The main clause of the sentence."
+                function: "The main clause of the sentence that can stand alone."
             });
-
         } else if (startsWithSubordinator) {
-            const commaIndex = text.indexOf(',');
+             const commaIndex = text.indexOf(',');
             if (commaIndex !== -1) {
                 const dependentClauseText = text.substring(0, commaIndex + 1);
+                const independentClauseText = text.substring(commaIndex + 1);
                 structuralAnalysis.push({
                     type: "Dependent Clause",
                     text: dependentClauseText.trim(),
                     function: "Begins with a subordinating conjunction and cannot stand alone."
                 });
-
-                const independentClauseText = text.substring(commaIndex + 1);
                 structuralAnalysis.push({
                     type: "Independent Clause",
                     text: independentClauseText.trim(),
-                    function: "The main clause of the sentence that can stand alone."
+                    function: "The main clause of the sentence."
                 });
             } else {
                 structuralAnalysis.push({
@@ -169,34 +122,11 @@ const App = () => {
                 });
             }
         } else {
-            structuralAnalysis.push({
+             // For simple sentences
+             structuralAnalysis.push({
                 type: "Independent Clause",
                 text: text.trim(),
-                function: "This is the main clause of the sentence."
-            });
-        }
-
-        const nounPhrasePattern = /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their)\s+([\w'-]+\s)*\w+/gi;
-        const nounPhrases = text.match(nounPhrasePattern);
-        if (nounPhrases) {
-            nounPhrases.forEach(phrase => {
-                structuralAnalysis.push({
-                    type: "Noun Phrase",
-                    text: phrase.trim(),
-                    function: "Acts as a noun in the sentence."
-                });
-            });
-        }
-
-        const prepPhrasePattern = /\b(in|on|at|by|for|with|about|to|from|of|over|under|through|during|before|after|above|below|between|among)\s+([\w'-]+\s)*\w+/gi;
-        const prepPhrases = text.match(prepPhrasePattern);
-        if (prepPhrases) {
-            prepPhrases.forEach(phrase => {
-                structuralAnalysis.push({
-                    type: "Prepositional Phrase",
-                    text: phrase.trim(),
-                    function: "Modifies other words by showing relationships."
-                });
+                function: "This is the main clause of the sentence that can stand alone."
             });
         }
 
@@ -208,7 +138,6 @@ const App = () => {
                 hasPunctuationErrors,
                 summary
             },
-            spellingAnalysis,
             structuralAnalysis
         };
     };
@@ -220,6 +149,10 @@ const App = () => {
 
         try {
             await new Promise(resolve => setTimeout(resolve, 1000));
+            if (!sentence.trim()) {
+                setError("Please enter a sentence to analyze.");
+                return;
+            }
             const result = analyzeSentence(sentence);
             setAnalysis(result);
         } catch (err) {
@@ -268,24 +201,6 @@ const App = () => {
                 )}
                 {analysis && (
                     <div className="mt-8 space-y-8">
-                        {analysis.spellingAnalysis && analysis.spellingAnalysis.length > 0 && (
-                            <div>
-                                <h2 className="text-2xl font-bold text-teal-600 mb-4">Spelling Analysis:</h2>
-                                <div className="bg-gray-200 p-6 rounded-xl space-y-4">
-                                    {analysis.spellingAnalysis.map((error, index) => (
-                                        <div key={index}>
-                                            <p className="text-lg font-semibold text-red-600 mb-2">Misspelled word: <span className="font-bold">{error.misspelledWord}</span></p>
-                                            <p className="text-md text-gray-700">Did you mean?</p>
-                                            <ul className="list-disc list-inside ml-4 mt-1 space-y-1 text-gray-600">
-                                                {error.suggestions.map((suggestion, sIndex) => (
-                                                    <li key={sIndex}>{suggestion}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                         <div>
                             <h2 className="text-2xl font-bold text-teal-600 mb-4">Parts of Speech:</h2>
                             <div className="flex flex-wrap gap-4 justify-center">
