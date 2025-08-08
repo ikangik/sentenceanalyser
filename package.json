@@ -2,7 +2,7 @@
   "name": "my-react-app",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://<ikangik>.github.io/<sentenceanalyser>",
+  "homepage": "homepage": "https://ikangik.github.io/sentenceanalyser/",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
