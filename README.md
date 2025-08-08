@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grammar Analysis Tool</title>
     <style>
-        /* General styling for the whole page */
         * {
             margin: 0;
             padding: 0;
@@ -17,14 +16,11 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
         }
 
         .container {
-            width: 100%;
             max-width: 1200px;
+            margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             backdrop-filter: blur(10px);
@@ -177,7 +173,7 @@
             font-size: 12px;
             font-weight: bold;
         }
-        
+
         .error-item, .suggestion-item {
             background: #fef2f2;
             border-left: 4px solid #ef4444;
@@ -237,7 +233,6 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
             overflow-x: auto;
-            white-space: pre;
         }
 
         .sentence-text {
@@ -303,67 +298,9 @@
             font-weight: 600;
         }
 
-        .word-count.error {
-            color: #dc2626;
-            font-weight: 600;
-        }
-
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        /* Modal for custom messages */
-        .modal {
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            visibility: hidden;
-            opacity: 0;
-            transition: visibility 0s, opacity 0.3s linear;
-        }
-        .modal.visible {
-            visibility: visible;
-            opacity: 1;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            text-align: center;
-            max-width: 400px;
-            position: relative;
-            animation: fadeIn 0.3s ease-out;
-        }
-        .modal-message {
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-            line-height: 1.5;
-            color: #374151;
-        }
-        .modal-btn {
-            background-color: #4f46e5;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .modal-btn:hover {
-            background-color: #6366f1;
-        }
-        @keyframes fadeIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
@@ -377,43 +314,29 @@
         <div class="main-content">
             <div class="input-section">
                 <label for="textInput" class="input-label">Enter your text for analysis:</label>
-                <textarea
-                    id="textInput"
-                    class="text-input"
+                <textarea 
+                    id="textInput" 
+                    class="text-input" 
                     placeholder="Type or paste your text here (maximum 60 words)..."
-                    maxlength="500"
                 ></textarea>
                 <div id="wordCount" class="word-count">0 / 60 words</div>
                 <button id="analyzeBtn" class="analyze-btn">Analyze Text</button>
             </div>
 
             <div id="results" class="results-grid" style="display: none;"></div>
-            <div id="loading" class="loading" style="display: none;">
-                Analyzing your text...
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Modal for Messages -->
-    <div id="messageModal" class="modal">
-        <div class="modal-content">
-            <p id="modalMessage" class="modal-message"></p>
-            <button id="modalCloseBtn" class="modal-btn">OK</button>
+            <div id="loading" class="loading" style="display: none;">Analyzing your text...</div>
         </div>
     </div>
 
     <script>
-        /**
-         * The main logic for analyzing text, including spelling, grammar, and parts of speech.
-         * Note: This is a simplified analysis for demonstration. A real tool would use
-         * a more robust natural language processing (NLP) library.
-         */
         class GrammarAnalyzer {
             constructor() {
-                // A very basic set of regex patterns for parts of speech detection
+                // A simplified, static list of words for parts of speech.
+                // This approach is limited and may not correctly classify all words in all contexts.
+                // For a more robust solution, a proper natural language processing (NLP) library or API would be required.
                 this.posPatterns = {
-                    noun: /\b(cat|dog|house|car|book|person|man|woman|child|tree|water|time|day|year|way|life|work|world|school|family|friend|home|place|thing|people|group|problem|fact|hand|eye|week|month|system|program|question|government|company|number|part|area|case|point|word|right|service|money|lot|business|state|job|name|information|story|student|night|study|game|music|country|side|food|head|mother|father|power|hour|room|community|research|door|health|heart|history|level|security|art|idea|war|type|kind|form|line|law|policy|development|light|city|action|interest|mind|decision|market|control|rate|technology|body|quality|education|society|media|officer|member|reason|space|nature|call|event|language|data|paper|economy|structure|environment|crime|energy|region|street|project|series|defense|relationship|force|opportunity|construction|message|culture|management|practice|pattern|animal|age|leader|performance|process|issue|building|material|trial|subject|color|knowledge|impact|activity|image|ground|application|position|attention|resource|organization|player|conference|plant|benefit|page|approach|loss|value|property|product|analysis|customer|employee|participant|response|purpose|basis|movement|discussion|concept|treatment|option|production|support|future|choice|technology|challenge|population|term|detail|growth|industry|character|success|difference|century|price|training|rule|committee|hospital|report|content|visit|budget|commission|phase|transition|budget|conflict|requirement|outcome|standard|partnership|capacity|equipment|agreement|function|recognition|structure|task|tool|order|evidence|goal|measure|network|unit|appearance|crisis|strategy|asset|context|environment|aspect|tradition|direction)s?\b/gi,
-                    verb: /\b(is|am|are|was|were|be|being|been|have|has|had|do|does|did|will|would|could|should|might|may|can|must|shall|go|goes|went|gone|going|make|makes|made|making|take|takes|took|taken|taking|come|comes|came|coming|see|sees|saw|seen|seeing|get|gets|got|gotten|getting|know|knows|knew|known|knowing|think|thinks|thought|thinking|look|looks|looked|looking|use|uses|used|using|find|finds|found|finding|give|gives|gave|given|giving|tell|tells|told|telling|work|works|worked|working|call|calls|called|calling|try|tries|tried|trying|ask|asks|asked|asking|turn|turns|turned|turning|move|moves|moved|moving|live|lives|lived|living|believe|believes|believed|believing|hold|holds|held|holding|bring|brings|brought|bringing|happen|happens|happened|happening|write|writes|wrote|written|writing|provide|provides|provided|providing|sit|sits|sat|sitting|stand|stands|stood|standing|lose|loses|lost|losing|pay|pays|paid|paying|meet|meets|met|meeting|include|includes|included|including|continue|continues|continued|continuing|set|sets|setting|consider|considers|considered|considering|appear|appears|appeared|appearing|create|creates|created|creating|speak|speaks|spoke|spoken|speaking|read|reads|reading|allow|allows|allowed|allowing|add|adds|added|adding|spend|spends|spent|spending|grow|grows|grew|grown|growing|open|opens|opened|opening|walk|walks|walked|walking|win|wins|won|winning|offer|offers|offered|offering|remember|remembers|remembered|remembering|love|loves|loved|loving|stop|stops|stopped|stopping|carry|carries|carried|carrying|talk|talks|talked|talking|appear|appears|appeared|appearing)\b/gi,
+                    verb: /\b(is|am|are|was|were|be|being|been|have|has|had|do|does|did|will|would|could|should|might|may|can|must|shall|go|make|take|come|see|get|know|think|look|use|find|give|tell|work|call|try|ask|turn|move|live|believe|hold|bring|happen|write|provide|sit|stand|lose|pay|meet|include|continue|set|consider|appear|create|speak|read|allow|add|spend|grow|open|walk|win|offer|remember|love|stop|carry|talk|run|say|want|need|feel|show|put|begin|keep|let|help|start|turn|like|start|mean|play|write|run|move|live|believe|happen|meet)s?|ed|ing|en|t\b/gi,
+                    noun: /\b(cat|dog|house|car|book|person|man|woman|child|tree|water|time|day|year|way|life|work|world|school|family|friend|home|place|thing|people|group|problem|fact|hand|eye|week|month|system|program|question|government|company|number|part|area|case|point|word|right|service|money|lot|business|state|job|name|information|story|student|night|study|game|music|country|side|food|head|mother|father|power|hour|room|community|research|door|health|heart|history|level|security|art|idea|war|type|kind|form|line|law|policy|development|light|city|action|interest|mind|decision|market|control|rate|technology|body|quality|education|society|media|officer|member|reason|space|nature|call|event|language|data|paper|economy|structure|environment|crime|energy|region|street|project|series|defense|relationship|force|opportunity|construction|message|culture|management|practice|pattern|animal|age|leader|performance|process|issue|building|material|trial|subject|color|knowledge|impact|activity|image|ground|application|position|attention|resource|organization|player|conference|plant|benefit|page|approach|loss|value|property|product|analysis|customer|employee|participant|response|purpose|basis|movement|discussion|concept|treatment|option|production|support|future|choice|challenge|population|term|detail|growth|industry|character|success|difference|century|price|training|rule|committee|hospital|report|content|visit|budget|commission|phase|transition|budget|conflict|requirement|outcome|standard|partnership|capacity|equipment|agreement|function|recognition|structure|task|tool|order|evidence|goal|measure|network|unit|appearance|crisis|strategy|asset|context|environment|aspect|tradition|direction)s?\b/gi,
                     adjective: /\b(good|great|new|first|last|long|small|large|big|little|high|low|old|young|early|late|important|public|bad|different|able|right|social|hard|local|far|difficult|available|likely|free|strong|sure|clear|white|black|red|blue|green|yellow|hot|cold|dark|light|happy|sad|angry|excited|tired|busy|quiet|loud|fast|slow|easy|ready|nice|fine|clean|dirty|full|empty|open|close|rich|poor|sick|healthy|safe|dangerous|serious|funny|pretty|ugly|smart|stupid|kind|mean|friendly|rude|careful|careless|patient|nervous|calm|worried|surprised|interested|boring|exciting|amazing|terrible|wonderful|beautiful|awful|perfect|real|true|false|possible|impossible|certain|special|normal|strange|familiar|foreign|popular|famous|common|rare|similar|different|equal|fair|unfair)er?|est?\b/gi,
                     adverb: /\b(very|really|quite|rather|pretty|so|too|enough|almost|nearly|just|only|even|still|yet|already|always|usually|often|sometimes|never|here|there|now|then|today|tomorrow|yesterday|up|down|in|out|on|off|over|under|through|across|along|around|before|after|during|while|since|until|again|also|however|therefore|thus|maybe|perhaps|probably|certainly|definitely|absolutely|completely|totally|entirely|partly|mostly|mainly|especially|particularly|generally|usually|actually|really|truly|clearly|obviously|apparently|possibly|likely|quickly|slowly|carefully|suddenly|immediately|soon|late|early|well|badly|hard|easily|simply|directly|exactly|perfectly|completely|fully|hardly|scarcely|barely|nearly|almost|quite|rather|pretty|very|extremely|incredibly|amazingly|surprisingly|unfortunately|luckily|hopefully|honestly|seriously|obviously|clearly|apparently)ly?\b/gi,
                     preposition: /\b(in|on|at|by|for|with|without|to|from|of|about|over|under|through|across|along|around|between|among|during|before|after|since|until|within|beyond|against|toward|towards|upon|beneath|above|below|inside|outside|beside|behind|ahead|throughout|despite|except|including|excluding|regarding|concerning|according)\b/gi,
@@ -422,73 +345,26 @@
                     determiner: /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their|some|any|no|every|each|either|neither|much|many|few|little|several|all|both|half|double|such)\b/gi
                 };
 
-                // Common misspellings and their corrections (with a focus on Australian English)
                 this.commonMisspellings = {
-                    'color': 'colour',
-                    'honor': 'honour',
-                    'favor': 'favour',
-                    'labor': 'labour',
-                    'neighbor': 'neighbour',
-                    'center': 'centre',
-                    'theater': 'theatre',
-                    'liter': 'litre',
-                    'meter': 'metre',
-                    'fiber': 'fibre',
-                    'organize': 'organise',
-                    'realize': 'realise',
-                    'recognize': 'recognise',
-                    'analyze': 'analyse',
-                    'paralyze': 'paralyse',
-                    'defense': 'defence',
-                    'offense': 'offence',
-                    'license': 'licence', // when used as noun
-                    'practice': 'practise', // when used as verb
-                    'traveling': 'travelling',
-                    'canceled': 'cancelled',
-                    'modeling': 'modelling',
-                    'leveling': 'levelling',
-                    'councilor': 'councillor',
-                    'counselor': 'counsellor',
-                    'mold': 'mould',
-                    'smolder': 'smoulder',
-                    'gray': 'grey',
-                    'pajamas': 'pyjamas',
-                    'tire': 'tyre', // wheel
-                    'curb': 'kerb', // street edge
-                    'story': 'storey', // building level
-                    'check': 'cheque', // bank payment
-                    'recieve': 'receive',
-                    'seperate': 'separate',
-                    'definately': 'definitely',
-                    'occured': 'occurred',
-                    'necesary': 'necessary',
-                    'accomodate': 'accommodate',
-                    'tommorrow': 'tomorrow',
-                    'begining': 'beginning',
-                    'writting': 'writing',
-                    'existance': 'existence',
-                    'refering': 'referring',
-                    'occurence': 'occurrence',
-                    'independant': 'independent',
-                    'goverment': 'government',
-                    'enviroment': 'environment',
-                    'beleive': 'believe',
-                    'reccommend': 'recommend',
-                    'embarass': 'embarrass',
-                    'calender': 'calendar'
+                    'color': 'colour', 'honor': 'honour', 'favor': 'favour', 'labor': 'labour', 'neighbor': 'neighbour',
+                    'center': 'centre', 'theater': 'theatre', 'liter': 'litre', 'meter': 'metre', 'fiber': 'fibre',
+                    'organize': 'organise', 'realize': 'realise', 'recognize': 'recognise', 'analyze': 'analyse', 'paralyze': 'paralyse',
+                    'defense': 'defence', 'offense': 'offence', 'license': 'licence', 'practice': 'practise', 'traveling': 'travelling',
+                    'canceled': 'cancelled', 'modeling': 'modelling', 'leveling': 'levelling', 'councilor': 'councillor',
+                    'counselor': 'counsellor', 'mold': 'mould', 'smolder': 'smoulder', 'gray': 'grey', 'pajamas': 'pyjamas',
+                    'tire': 'tyre', 'curb': 'kerb', 'story': 'storey', 'check': 'cheque', 'recieve': 'receive',
+                    'seperate': 'separate', 'definately': 'definitely', 'occured': 'occurred', 'necesary': 'necessary',
+                    'accomodate': 'accommodate', 'tommorrow': 'tomorrow', 'begining': 'beginning', 'writting': 'writing',
+                    'existance': 'existence', 'refering': 'referring', 'occurence': 'occurrence', 'independant': 'independent',
+                    'goverment': 'government', 'enviroment': 'environment', 'beleive': 'believe', 'reccommend': 'recommend',
+                    'embarass': 'embarrass', 'calender': 'calendar',
                 };
 
-                // Verbs that indicate a passive voice construction
-                this.passiveIndicators = [
-                    'was', 'were', 'is', 'are', 'been', 'being', 'be'
+                this.irregularPastParticiples = [
+                    'done', 'given', 'read', 'taken', 'made', 'written', 'seen', 'found', 'met', 'bought', 'thought', 'spoken'
                 ];
             }
 
-            /**
-             * Main function to analyze the provided text.
-             * @param {string} text The text to be analyzed.
-             * @returns {object} An object containing all analysis results.
-             */
             analyze(text) {
                 if (!text.trim()) return null;
 
@@ -513,29 +389,14 @@
                 return results;
             }
 
-            /**
-             * Counts the number of words in a given text.
-             * @param {string} text The text to count words in.
-             * @returns {number} The number of words.
-             */
             countWords(text) {
                 return (text.match(/\b[\w']+\b/g) || []).length;
             }
 
-            /**
-             * Splits text into individual sentences based on punctuation.
-             * @param {string} text The text to split.
-             * @returns {string[]} An array of sentences.
-             */
             splitIntoSentences(text) {
                 return text.match(/[^\.!?]+[\.!?]+/g) || [text];
             }
 
-            /**
-             * Checks the text for common misspellings defined in the dictionary.
-             * @param {string} text The text to check.
-             * @returns {object[]} An array of spelling errors found.
-             */
             checkSpelling(text) {
                 const errors = [];
                 const words = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
@@ -554,15 +415,9 @@
                 return errors;
             }
 
-            /**
-             * Performs a basic grammar check for issues like double spaces and capitalization.
-             * @param {string} text The text to check.
-             * @returns {object[]} An array of grammar errors found.
-             */
             checkGrammar(text) {
                 const errors = [];
                 
-                // Check for double spaces
                 if (text.includes('  ')) {
                     errors.push({
                         error: 'Multiple spaces found',
@@ -571,11 +426,10 @@
                     });
                 }
 
-                // Check for missing capitalization at sentence start
                 const sentences = this.splitIntoSentences(text);
                 sentences.forEach((sentence, index) => {
                     const trimmed = sentence.trim();
-                    if (trimmed.length > 0 && trimmed[0] !== trimmed[0].toUpperCase()) {
+                    if (trimmed.length > 0 && trimmed[0] !== trimmed[0].toUpperCase() && trimmed[0].match(/[a-z]/i)) {
                         errors.push({
                             error: `Sentence ${index + 1} should start with a capital letter`,
                             suggestion: `Capitalize the first letter: "${trimmed[0].toUpperCase()}${trimmed.slice(1)}"`,
@@ -584,27 +438,9 @@
                     }
                 });
 
-                // Check for comma splices (basic check)
-                text.split(/[.!?]/).forEach((sentence, index) => {
-                    const commaCount = (sentence.match(/,/g) || []).length;
-                    const conjunctions = (sentence.match(/\b(and|or|but|so)\b/g) || []).length;
-                    if (commaCount > conjunctions + 1) {
-                        errors.push({
-                            error: `Possible comma splice in sentence ${index + 1}`,
-                            suggestion: 'Consider using semicolons or splitting into separate sentences',
-                            type: 'punctuation'
-                        });
-                    }
-                });
-
                 return errors;
             }
 
-            /**
-             * Identifies parts of speech for each word using a simple regex-based approach.
-             * @param {string} text The text to analyze.
-             * @returns {object[]} An array of objects with word and part of speech.
-             */
             identifyPartsOfSpeech(text) {
                 const words = text.match(/\b[\w']+\b/g) || [];
                 const posResults = [];
@@ -622,7 +458,7 @@
                         }
                     }
 
-                    if (/^[^\w\s]+$/.test(word)) {
+                    if (word.match(/[\.!,;?]/)) {
                         pos = 'punctuation';
                         posClass = 'pos-punct';
                     }
@@ -637,58 +473,63 @@
                 return posResults;
             }
 
-            /**
-             * Analyzes each sentence to determine if it's in an active or passive voice.
-             * This is a very simplified check.
-             * @param {string[]} sentences An array of sentences.
-             * @returns {object[]} An array of objects with sentence and voice type.
-             */
             analyzeVoice(sentences) {
-                return sentences.map((sentence, index) => {
+                return sentences.map((sentence) => {
                     const words = sentence.toLowerCase().match(/\b\w+\b/g) || [];
-                    const hasPassiveIndicator = words.some(word =>
-                        this.passiveIndicators.includes(word)
-                    );
-                    
-                    const hasPastParticiple = words.some(word =>
-                        word.endsWith('ed') || word.endsWith('en') || word.endsWith('n')
-                    );
+                    let isPassive = false;
 
-                    const isPassive = hasPassiveIndicator && hasPastParticiple;
+                    // Simple check for passive voice: form of "to be" + past participle
+                    for (let i = 0; i < words.length - 1; i++) {
+                        const word = words[i];
+                        const nextWord = words[i + 1];
+
+                        if (
+                            ['is', 'am', 'are', 'was', 'were', 'be', 'being', 'been'].includes(word) &&
+                            (nextWord.endsWith('ed') || this.irregularPastParticiples.includes(nextWord))
+                        ) {
+                            isPassive = true;
+                            break;
+                        }
+                    }
 
                     return {
                         sentence: sentence.trim(),
                         voice: isPassive ? 'passive' : 'active',
-                        confidence: isPassive ? 0.8 : 0.9,
                         explanation: isPassive ?
-                            'Contains auxiliary verb + past participle pattern' :
+                            'Contains an auxiliary verb + past participle pattern (e.g., "was read")' :
                             'Subject performs the action directly'
                     };
                 });
             }
 
-            /**
-             * Creates a very simple sentence diagram for each sentence.
-             * @param {string[]} sentences An array of sentences.
-             * @returns {object[]} An array of objects with the sentence and its diagram.
-             */
             createSentenceDiagrams(sentences) {
-                return sentences.map((sentence, index) => {
+                // This is a highly simplified function and will not correctly diagram complex sentences.
+                // It is a placeholder for a more advanced parsing library.
+                return sentences.map((sentence) => {
                     const words = sentence.trim().match(/\b[\w']+\b/g) || [];
                     if (words.length === 0) return null;
 
-                    const subject = words[0] || 'Subject';
-                    let verb = 'verb';
+                    let subject = words[0] || 'Subject';
+                    let verb = '';
                     let object = '';
 
-                    for (let i = 1; i < words.length; i++) {
+                    let verbIndex = -1;
+                    for (let i = 0; i < words.length; i++) {
                         if (this.posPatterns.verb.test(words[i].toLowerCase())) {
-                            verb = words[i];
-                            if (i + 1 < words.length) {
-                                object = words.slice(i + 1).join(' ');
-                            }
+                            verbIndex = i;
                             break;
                         }
+                    }
+
+                    if (verbIndex !== -1) {
+                        verb = words[verbIndex];
+                        if (verbIndex + 1 < words.length) {
+                            object = words.slice(verbIndex + 1).join(' ');
+                        }
+                    }
+
+                    if (verbIndex > 0) {
+                        subject = words.slice(0, verbIndex).join(' ');
                     }
 
                     const diagram = this.generateDiagramText(subject, verb, object);
@@ -705,13 +546,6 @@
                 });
             }
 
-            /**
-             * Generates the ASCII art for a simple sentence diagram.
-             * @param {string} subject The subject of the sentence.
-             * @param {string} verb The verb of the sentence.
-             * @param {string} object The object of the sentence.
-             * @returns {string} The ASCII diagram.
-             */
             generateDiagramText(subject, verb, object) {
                 if (object) {
                     return `
@@ -728,12 +562,6 @@
                 }
             }
 
-            /**
-             * Generates various statistics about the text.
-             * @param {string} text The full text.
-             * @param {string[]} sentences An array of sentences.
-             * @returns {object} An object containing all the statistics.
-             */
             generateStatistics(text, sentences) {
                 const words = text.match(/\b[\w']+\b/g) || [];
                 const characters = text.length;
@@ -758,21 +586,17 @@
             }
         }
 
-        /**
-         * Manages the user interface and interactions for the Grammar Analysis Tool.
-         */
         class GrammarAnalyzerUI {
             constructor() {
                 this.analyzer = new GrammarAnalyzer();
                 this.initializeEventListeners();
+                this.loadSampleText();
             }
 
             initializeEventListeners() {
                 const analyzeBtn = document.getElementById('analyzeBtn');
                 const textInput = document.getElementById('textInput');
-                const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-                // Real-time word counting
                 textInput.addEventListener('input', () => {
                     this.updateWordCount();
                 });
@@ -786,19 +610,14 @@
                         this.analyzeText();
                     }
                 });
+            }
 
-                modalCloseBtn.addEventListener('click', () => {
-                    this.hideModal();
-                });
-
-                // Add some sample text for demonstration
-                textInput.value = "This is a sample sentence to test the grammar analyser. There are some deliberate mistakes here. The book was read by the student yesterday. We organised the event at the centre.";
+            loadSampleText() {
+                const textInput = document.getElementById('textInput');
+                textInput.value = "This is a sample sentence to test the grammar analyzer. there are some deliberate mistakes here. The book was read by the student yesterday. We organised the event at the centre.";
                 this.updateWordCount();
             }
 
-            /**
-             * Updates the word count display and applies styling based on the count.
-             */
             updateWordCount() {
                 const textInput = document.getElementById('textInput');
                 const wordCountElement = document.getElementById('wordCount');
@@ -815,43 +634,35 @@
                 }
             }
 
-            /**
-             * Initiates the text analysis process.
-             */
             async analyzeText() {
                 const textInput = document.getElementById('textInput');
                 const text = textInput.value.trim();
                 
                 if (!text) {
-                    this.showMessage('Please enter some text to analyse.');
+                    alert('Please enter some text to analyze.');
                     return;
                 }
 
                 const wordCount = this.analyzer.countWords(text);
                 if (wordCount > 60) {
-                    this.showMessage(`Text exceeds 60-word limit. Please reduce to 60 words or fewer. Current count: ${wordCount} words.`);
+                    alert(`Text exceeds 60-word limit. Please reduce to 60 words or fewer. Current count: ${wordCount} words.`);
                     return;
                 }
 
                 this.showLoading(true);
                 
                 try {
-                    // Simulate processing time for better UX
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     
                     const results = this.analyzer.analyze(text);
                     this.displayResults(results);
                 } catch (error) {
-                    this.showMessage(error.message);
+                    alert(error.message);
                 } finally {
                     this.showLoading(false);
                 }
             }
 
-            /**
-             * Shows or hides the loading indicator.
-             * @param {boolean} show True to show, false to hide.
-             */
             showLoading(show) {
                 const loading = document.getElementById('loading');
                 const results = document.getElementById('results');
@@ -862,64 +673,23 @@
                 analyzeBtn.disabled = show;
             }
 
-            /**
-             * Displays a custom modal message.
-             * @param {string} message The message to display.
-             */
-            showMessage(message) {
-                const modal = document.getElementById('messageModal');
-                const modalMessage = document.getElementById('modalMessage');
-                modalMessage.textContent = message;
-                modal.classList.add('visible');
-            }
-
-            /**
-             * Hides the custom modal.
-             */
-            hideModal() {
-                const modal = document.getElementById('messageModal');
-                modal.classList.remove('visible');
-            }
-
-            /**
-             * Clears the results and displays new ones in the grid.
-             * @param {object} results The analysis results object.
-             */
             displayResults(results) {
                 const resultsContainer = document.getElementById('results');
                 resultsContainer.innerHTML = '';
 
-                if (!results) return;
-
-                // Statistics Card
                 resultsContainer.appendChild(this.createStatisticsCard(results.statistics));
-
-                // Spelling Errors Card
                 resultsContainer.appendChild(this.createSpellingCard(results.spelling));
-
-                // Grammar Issues Card
                 resultsContainer.appendChild(this.createGrammarCard(results.grammar));
-
-                // Parts of Speech Card
                 resultsContainer.appendChild(this.createPartsOfSpeechCard(results.partsOfSpeech));
-
-                // Voice Analysis Card
                 resultsContainer.appendChild(this.createVoiceAnalysisCard(results.voiceAnalysis));
-
-                // Sentence Diagrams Card
                 resultsContainer.appendChild(this.createSentenceDiagramsCard(results.sentenceDiagrams));
             }
 
-            /**
-             * Creates the HTML element for the statistics card.
-             * @param {object} stats The statistics data.
-             * @returns {HTMLElement} The statistics card element.
-             */
             createStatisticsCard(stats) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
                 card.innerHTML = `
-                    <h3 class="card-title"><div class="card-icon">#</div>Text Statistics</h3>
+                    <h3 class="card-title"><span class="card-icon">📊</span> Statistics</h3>
                     <div class="stats-grid">
                         <div class="stat-item">
                             <div class="stat-number">${stats.words}</div>
@@ -935,118 +705,102 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-number">${stats.avgWordsPerSentence}</div>
-                            <div class="stat-label">Avg. words/sentence</div>
+                            <div class="stat-label">Words/Sentence</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-number">${stats.avgCharsPerWord}</div>
-                            <div class="stat-label">Avg. chars/word</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.characters}</div>
-                            <div class="stat-label">Characters</div>
+                            <div class="stat-label">Chars/Word</div>
                         </div>
                     </div>
                 `;
                 return card;
             }
 
-            /**
-             * Creates the HTML element for the spelling card.
-             * @param {object[]} errors The spelling error data.
-             * @returns {HTMLElement} The spelling card element.
-             */
-            createSpellingCard(errors) {
+            createSpellingCard(spellingErrors) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
-                let content = `<h3 class="card-title"><div class="card-icon">!</div>Spelling Suggestions</h3>`;
-                if (errors.length === 0) {
-                    content += `<p>No common spelling issues found.</p>`;
-                } else {
-                    errors.forEach(error => {
-                        content += `<div class="error-item">
-                            <span>Found: <strong>${error.word}</strong></span>,
-                            <span>Suggestion: <strong>${error.suggestion}</strong></span>
-                        </div>`;
+                let content = `
+                    <h3 class="card-title"><span class="card-icon">📝</span> Spelling Suggestions</h3>
+                `;
+                if (spellingErrors.length > 0) {
+                    content += '<ul>';
+                    spellingErrors.forEach(err => {
+                        content += `<li class="suggestion-item"><strong>${err.word}</strong> &rarr; ${err.suggestion}</li>`;
                     });
+                    content += '</ul>';
+                } else {
+                    content += '<p>No spelling suggestions found.</p>';
                 }
                 card.innerHTML = content;
                 return card;
             }
 
-            /**
-             * Creates the HTML element for the grammar card.
-             * @param {object[]} errors The grammar error data.
-             * @returns {HTMLElement} The grammar card element.
-             */
-            createGrammarCard(errors) {
+            createGrammarCard(grammarErrors) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
-                let content = `<h3 class="card-title"><div class="card-icon">G</div>Grammar & Punctuation</h3>`;
-                if (errors.length === 0) {
-                    content += `<p>No basic grammar issues found.</p>`;
-                } else {
-                    errors.forEach(error => {
-                        content += `<div class="error-item">
-                            <span>${error.error}</span>.
-                            <span>Suggestion: <strong>${error.suggestion}</strong></span>
-                        </div>`;
+                let content = `
+                    <h3 class="card-title"><span class="card-icon">⚠️</span> Grammar Issues</h3>
+                `;
+                if (grammarErrors.length > 0) {
+                    content += '<ul>';
+                    grammarErrors.forEach(err => {
+                        content += `<li class="error-item"><strong>${err.error}</strong> &rarr; ${err.suggestion}</li>`;
                     });
+                    content += '</ul>';
+                } else {
+                    content += '<p>No grammar issues found.</p>';
                 }
                 card.innerHTML = content;
                 return card;
             }
 
-            /**
-             * Creates the HTML element for the parts of speech card.
-             * @param {object[]} posData The parts of speech data.
-             * @returns {HTMLElement} The parts of speech card element.
-             */
-            createPartsOfSpeechCard(posData) {
+            createPartsOfSpeechCard(posResults) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
-                let content = `<h3 class="card-title"><div class="card-icon">P</div>Parts of Speech</h3><p>Click on a word to see its part of speech.</p>`;
-                
-                posData.forEach(item => {
-                    content += `<span class="pos-tag ${item.class}">${item.word} (${item.pos.charAt(0).toUpperCase()})</span> `;
+                let content = `
+                    <h3 class="card-title"><span class="card-icon">🏷️</span> Parts of Speech</h3>
+                    <p>
+                `;
+                posResults.forEach(item => {
+                    content += `<span class="pos-tag ${item.class}">${item.word} (${item.pos.charAt(0).toUpperCase()})</span>`;
+                });
+                content += '</p>';
+                card.innerHTML = content;
+                return card;
+            }
+
+            createVoiceAnalysisCard(voiceAnalysis) {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                let content = `
+                    <h3 class="card-title"><span class="card-icon">🔊</span> Voice Analysis</h3>
+                `;
+                voiceAnalysis.forEach(item => {
+                    const voiceClass = item.voice === 'passive' ? 'voice-passive' : 'voice-active';
+                    content += `
+                        <div class="sentence-text">${item.sentence}</div>
+                        <div class="voice-indicator ${voiceClass}">
+                            Voice: ${item.voice.charAt(0).toUpperCase() + item.voice.slice(1)}
+                        </div>
+                        <small>${item.explanation}</small>
+                    `;
                 });
                 card.innerHTML = content;
                 return card;
             }
 
-            /**
-             * Creates the HTML element for the voice analysis card.
-             * @param {object[]} voiceData The voice analysis data.
-             * @returns {HTMLElement} The voice analysis card element.
-             */
-            createVoiceAnalysisCard(voiceData) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `<h3 class="card-title"><div class="card-icon">V</div>Voice Analysis</h3>`;
-
-                voiceData.forEach(item => {
-                    const voiceClass = item.voice === 'active' ? 'voice-active' : 'voice-passive';
-                    content += `<div class="voice-indicator ${voiceClass}">
-                        ${item.sentence} - ${item.voice.charAt(0).toUpperCase() + item.voice.slice(1)} voice
-                    </div>`;
-                });
-                card.innerHTML = content;
-                return card;
-            }
-
-            /**
-             * Creates the HTML element for the sentence diagrams card.
-             * @param {object[]} diagrams The sentence diagram data.
-             * @returns {HTMLElement} The sentence diagrams card element.
-             */
             createSentenceDiagramsCard(diagrams) {
                 const card = document.createElement('div');
                 card.className = 'result-card';
-                let content = `<h3 class="card-title"><div class="card-icon">S</div>Sentence Diagrams</h3>`;
-
+                let content = `
+                    <h3 class="card-title"><span class="card-icon">🖼️</span> Simplified Sentence Diagram</h3>
+                `;
                 diagrams.forEach(item => {
                     if (item) {
-                        content += `<div class="sentence-text">${item.sentence}</div>`;
-                        content += `<div class="diagram-container">${item.diagram}</div>`;
+                        content += `
+                            <div class="sentence-text">${item.sentence}</div>
+                            <pre class="diagram-container">${item.diagram}</pre>
+                        `;
                     }
                 });
                 card.innerHTML = content;
@@ -1054,10 +808,9 @@
             }
         }
 
-        // Initialize the UI on window load
-        window.onload = function() {
+        document.addEventListener('DOMContentLoaded', () => {
             new GrammarAnalyzerUI();
-        };
+        });
     </script>
 </body>
 </html>
