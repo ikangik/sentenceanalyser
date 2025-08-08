@@ -74,6 +74,15 @@ const App = () => {
             pos: getPOS(word, index, words)
         }));
 
+        // Helper to check if a word is a verb
+        const hasVerb = posAnalysis.some(item => ['Verb', 'Auxiliary Verb'].includes(item.pos));
+
+        // Helper to identify subordinating conjunctions
+        const isSubordinatingConjunction = (word) => {
+            const subordinators = ['after', 'although', 'as', 'because', 'before', 'if', 'since', 'that', 'though', 'unless', 'until', 'when', 'where', 'while'];
+            return subordinators.includes(word.toLowerCase().replace(/[.,!?;:"']/g, ''));
+        };
+
         // Grammar Analysis (updated for better accuracy)
         const hasAuxiliary = words.some(word =>
             ['am', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'will', 'would', 'shall', 'should'].includes(word.toLowerCase())
@@ -82,9 +91,12 @@ const App = () => {
         const hasBy = text.toLowerCase().includes(' by ');
         const voice = hasAuxiliary && hasBy ? 'Passive' : 'Active';
 
+        const startsWithSubordinator = words.length > 0 && isSubordinatingConjunction(words[0]);
+
         const isCompleteSentence = text.trim().length > 0 &&
             /[.!?]$/.test(text.trim()) &&
-            words.length >= 2;
+            hasVerb &&
+            (!startsWithSubordinator || (startsWithSubordinator && text.includes(',')));
 
         const hasPunctuationErrors = !(/[.!?]$/.test(text.trim())) && text.trim().length > 0;
 
@@ -127,12 +139,39 @@ const App = () => {
         // Structural Analysis (updated for a slightly more robust approach)
         const structuralAnalysis = [];
 
-        // Main Clause
-        structuralAnalysis.push({
-            type: "Independent Clause",
-            text: text.trim(),
-            function: "This is the main clause of the sentence."
-        });
+        // Dependent Clause (if applicable)
+        if (startsWithSubordinator) {
+            const commaIndex = text.indexOf(',');
+            if (commaIndex !== -1) {
+                const dependentClauseText = text.substring(0, commaIndex + 1);
+                structuralAnalysis.push({
+                    type: "Dependent Clause",
+                    text: dependentClauseText.trim(),
+                    function: "Begins with a subordinating conjunction and cannot stand alone."
+                });
+
+                const independentClauseText = text.substring(commaIndex + 1);
+                structuralAnalysis.push({
+                    type: "Independent Clause",
+                    text: independentClauseText.trim(),
+                    function: "The main clause of the sentence that can stand alone."
+                });
+            } else {
+                // This is a dependent clause fragment
+                structuralAnalysis.push({
+                    type: "Dependent Clause Fragment",
+                    text: text.trim(),
+                    function: "This clause begins with a subordinating conjunction and cannot stand alone."
+                });
+            }
+        } else {
+            // Default to treating the whole sentence as an independent clause
+            structuralAnalysis.push({
+                type: "Independent Clause",
+                text: text.trim(),
+                function: "This is the main clause of the sentence."
+            });
+        }
 
         // Noun Phrases
         const nounPhrasePattern = /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their)\s+([\w'-]+\s)*\w+/gi;
@@ -159,6 +198,7 @@ const App = () => {
                 });
             });
         }
+
 
         return {
             posAnalysis,
@@ -192,36 +232,8 @@ const App = () => {
 
     return (
         <div className="min-h-screen bg-white text-gray-800 font-sans p-8 flex flex-col items-center">
-            <style>
-                {`
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-                    .font-sans {
-                        font-family: 'Inter', sans-serif;
-                    }
-                    .tartan-button {
-                        background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 11px),
-                                          repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 11px),
-                                          linear-gradient(to right, #004d40 0 10%, #00897b 10% 20%, #4db6ac 20% 40%, #00897b 40% 50%, #4db6ac 50% 70%, #00897b 70% 80%, #004d40 80% 100%);
-                        background-size: 100% 100%;
-                        color: white;
-                        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
-                        transition: all 0.3s ease;
-                    }
-                    .tartan-button:hover {
-                        background-size: 105% 105%;
-                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                    }
-                    .tartan-button:disabled {
-                        background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 11px),
-                                          repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 11px),
-                                          linear-gradient(to right, #37474f 0 100%);
-                        cursor: not-allowed;
-                        box-shadow: none;
-                    }
-                `}
-            </style>
             <div className="w-full max-w-2xl bg-gray-100 p-8 rounded-2xl shadow-xl space-y-6">
-                <h1 style={{ fontSize: '2rem', color: 'blue', textAlign: 'center' }}>Sentence Analyser</h1>
+                <h1 className="text-4xl font-bold text-center text-teal-600">Sentence Analyser</h1>
                 <p className="text-center text-gray-500">
                     Enter a sentence for analysis. Now works offline with built-in analysis!
                 </p>
