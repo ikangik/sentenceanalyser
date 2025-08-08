@@ -1,816 +1,321 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grammar Analysis Tool</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+import React, { useState } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+// The following global variables are provided by the Canvas environment.
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+// Initialize Firebase App
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-        .header {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            color: white;
-            text-align: center;
-            padding: 30px 20px;
-            position: relative;
-            overflow: hidden;
-        }
+// Sign in with custom token or anonymously
+const signIn = async () => {
+  try {
+    if (initialAuthToken) {
+      await signInWithCustomToken(auth, initialAuthToken);
+    } else {
+      await signInAnonymously(auth);
+    }
+  } catch (error) {
+    console.error("Firebase sign-in failed:", error);
+  }
+};
 
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-            animation: float 6s ease-in-out infinite;
-        }
+const App = () => {
+    const [sentence, setSentence] = useState('');
+    const [analysis, setAnalysis] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-        @keyframes float {
-            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
-            50% { transform: translate(-50%, -50%) rotate(180deg); }
-        }
+    const handleAnalyse = async () => {
+        setIsLoading(true);
+        setError('');
+        setAnalysis(null);
+        
+        await signIn();
 
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-        }
+        // The prompt will instruct the model to analyse the sentence and provide a structured JSON response
+        const prompt = `Analyse the following English sentence for grammar, spelling, and sentence structure and return a single JSON object. The grammatical and spelling rules for this analysis should be based on the standards of the Oxford English Dictionary (Australian spelling). Ensure that words like 'capitalisation' and 'capitalise' are used instead of their American English counterparts.
+        
+        The JSON object should have four top-level keys:
+        1.  "posAnalysis": An array of objects. Each object should have two properties: "word" (the word itself) and "pos" (its part of speech, using the full word, not an acronym, e.g., "Noun", "Verb", "Adjective"). Please use "Exclamation" instead of "Interjection". For words like "hello", identify them as "Exclamation" unless the context clearly indicates a different function (e.g., "She gave a hello" where "hello" would be a Noun).
+        2.  "grammarAnalysis": An object with the following properties:
+            - "voice": A string indicating if the sentence is "Active" or "Passive".
+            - "isCompleteSentence": a boolean indicating if it's a complete sentence.
+            - "hasPunctuationErrors": a boolean indicating if there are punctuation issues.
+            - "summary": A string providing a brief, one-sentence summary of any grammatical issues, including dependent clauses, syntax errors, and **incorrect use of capital letters**.
+        3.  "spellingAnalysis": An array of objects. Each object should represent a misspelled word and contain:
+            - "misspelledWord": The incorrect word found in the sentence.
+            - "suggestions": An array of strings with potential correct spellings for that word.
+        4.  "structuralAnalysis": An array of objects. Each object should represent a specific clause or phrase found in the sentence. Each object should contain:
+            - "type": A string indicating the type of clause or phrase (e.g., "Independent Clause", "Noun Phrase", "Prepositional Phrase", "Participial Phrase", etc.).
+            - "text": The exact text of the clause or phrase.
+            - "function": A short string explaining what this clause or phrase does in the sentence.
+        
+        For multi-word verb phrases, like "was read", identify "was" as "Auxiliary Verb" and "read" as "Verb". "We organised" should correctly identify "we" as "Pronoun" and "organised" as "Verb".
 
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-        }
-
-        .main-content {
-            padding: 30px;
-        }
-
-        .input-section {
-            margin-bottom: 30px;
-        }
-
-        .input-label {
-            display: block;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 10px;
-        }
-
-        .text-input {
-            width: 100%;
-            min-height: 150px;
-            padding: 15px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.8);
-        }
-
-        .text-input:focus {
-            outline: none;
-            border-color: #4f46e5;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .analyze-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: block;
-            margin: 20px auto 0;
-            min-width: 200px;
-        }
-
-        .analyze-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-        }
-
-        .analyze-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
-        }
-
-        .result-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            border: 1px solid #f3f4f6;
-            transition: all 0.3s ease;
-        }
-
-        .result-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-
-        .card-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-icon {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .error-item, .suggestion-item {
-            background: #fef2f2;
-            border-left: 4px solid #ef4444;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-        }
-
-        .suggestion-item {
-            background: #f0f9ff;
-            border-left-color: #3b82f6;
-        }
-
-        .pos-tag {
-            display: inline-block;
-            padding: 4px 8px;
-            margin: 2px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .pos-noun { background: #dbeafe; color: #1e40af; }
-        .pos-verb { background: #dcfce7; color: #166534; }
-        .pos-adj { background: #fef3c7; color: #92400e; }
-        .pos-adv { background: #f3e8ff; color: #7c2d12; }
-        .pos-prep { background: #fce7f3; color: #be185d; }
-        .pos-conj { background: #e0f2fe; color: #0c4a6e; }
-        .pos-pron { background: #fff1f2; color: #be123c; }
-        .pos-det { background: #f0fdf4; color: #15803d; }
-        .pos-punct { background: #fafaf9; color: #57534e; }
-        .pos-other { background: #f5f5f5; color: #6b7280; }
-
-        .voice-indicator {
-            padding: 8px 15px;
-            border-radius: 25px;
-            font-weight: 600;
-            text-align: center;
-            margin: 10px 0;
-        }
-
-        .voice-active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .voice-passive {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .diagram-container {
-            background: #f9fafb;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 15px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            overflow-x: auto;
-        }
-
-        .sentence-text {
-            background: #f3f4f6;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-style: italic;
-            border-left: 4px solid #6b7280;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 15px;
-            margin: 15px 0;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #4f46e5;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #6b7280;
-            margin-top: 5px;
-        }
-
-        .loading {
-            text-align: center;
-            color: #6b7280;
-            padding: 40px;
-            font-size: 1.1rem;
-        }
-
-        .word-highlight {
-            background: linear-gradient(120deg, #fbbf24 0%, #f59e0b 100%);
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-
-        .word-count {
-            font-size: 0.9rem;
-            color: #6b7280;
-            text-align: right;
-            margin-top: 8px;
-            transition: color 0.3s ease;
-        }
-
-        .word-count.warning {
-            color: #f59e0b;
-            font-weight: 600;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Grammar Analysis Tool</h1>
-            <p>Comprehensive grammar, spelling, and sentence analysis</p>
-        </div>
-
-        <div class="main-content">
-            <div class="input-section">
-                <label for="textInput" class="input-label">Enter your text for analysis:</label>
-                <textarea 
-                    id="textInput" 
-                    class="text-input" 
-                    placeholder="Type or paste your text here (maximum 60 words)..."
-                ></textarea>
-                <div id="wordCount" class="word-count">0 / 60 words</div>
-                <button id="analyzeBtn" class="analyze-btn">Analyze Text</button>
-            </div>
-
-            <div id="results" class="results-grid" style="display: none;"></div>
-            <div id="loading" class="loading" style="display: none;">Analyzing your text...</div>
-        </div>
-    </div>
-
-    <script>
-        class GrammarAnalyzer {
-            constructor() {
-                // A simplified, static list of words for parts of speech.
-                // This approach is limited and may not correctly classify all words in all contexts.
-                // For a more robust solution, a proper natural language processing (NLP) library or API would be required.
-                this.posPatterns = {
-                    verb: /\b(is|am|are|was|were|be|being|been|have|has|had|do|does|did|will|would|could|should|might|may|can|must|shall|go|make|take|come|see|get|know|think|look|use|find|give|tell|work|call|try|ask|turn|move|live|believe|hold|bring|happen|write|provide|sit|stand|lose|pay|meet|include|continue|set|consider|appear|create|speak|read|allow|add|spend|grow|open|walk|win|offer|remember|love|stop|carry|talk|run|say|want|need|feel|show|put|begin|keep|let|help|start|turn|like|start|mean|play|write|run|move|live|believe|happen|meet)s?|ed|ing|en|t\b/gi,
-                    noun: /\b(cat|dog|house|car|book|person|man|woman|child|tree|water|time|day|year|way|life|work|world|school|family|friend|home|place|thing|people|group|problem|fact|hand|eye|week|month|system|program|question|government|company|number|part|area|case|point|word|right|service|money|lot|business|state|job|name|information|story|student|night|study|game|music|country|side|food|head|mother|father|power|hour|room|community|research|door|health|heart|history|level|security|art|idea|war|type|kind|form|line|law|policy|development|light|city|action|interest|mind|decision|market|control|rate|technology|body|quality|education|society|media|officer|member|reason|space|nature|call|event|language|data|paper|economy|structure|environment|crime|energy|region|street|project|series|defense|relationship|force|opportunity|construction|message|culture|management|practice|pattern|animal|age|leader|performance|process|issue|building|material|trial|subject|color|knowledge|impact|activity|image|ground|application|position|attention|resource|organization|player|conference|plant|benefit|page|approach|loss|value|property|product|analysis|customer|employee|participant|response|purpose|basis|movement|discussion|concept|treatment|option|production|support|future|choice|challenge|population|term|detail|growth|industry|character|success|difference|century|price|training|rule|committee|hospital|report|content|visit|budget|commission|phase|transition|budget|conflict|requirement|outcome|standard|partnership|capacity|equipment|agreement|function|recognition|structure|task|tool|order|evidence|goal|measure|network|unit|appearance|crisis|strategy|asset|context|environment|aspect|tradition|direction)s?\b/gi,
-                    adjective: /\b(good|great|new|first|last|long|small|large|big|little|high|low|old|young|early|late|important|public|bad|different|able|right|social|hard|local|far|difficult|available|likely|free|strong|sure|clear|white|black|red|blue|green|yellow|hot|cold|dark|light|happy|sad|angry|excited|tired|busy|quiet|loud|fast|slow|easy|ready|nice|fine|clean|dirty|full|empty|open|close|rich|poor|sick|healthy|safe|dangerous|serious|funny|pretty|ugly|smart|stupid|kind|mean|friendly|rude|careful|careless|patient|nervous|calm|worried|surprised|interested|boring|exciting|amazing|terrible|wonderful|beautiful|awful|perfect|real|true|false|possible|impossible|certain|special|normal|strange|familiar|foreign|popular|famous|common|rare|similar|different|equal|fair|unfair)er?|est?\b/gi,
-                    adverb: /\b(very|really|quite|rather|pretty|so|too|enough|almost|nearly|just|only|even|still|yet|already|always|usually|often|sometimes|never|here|there|now|then|today|tomorrow|yesterday|up|down|in|out|on|off|over|under|through|across|along|around|before|after|during|while|since|until|again|also|however|therefore|thus|maybe|perhaps|probably|certainly|definitely|absolutely|completely|totally|entirely|partly|mostly|mainly|especially|particularly|generally|usually|actually|really|truly|clearly|obviously|apparently|possibly|likely|quickly|slowly|carefully|suddenly|immediately|soon|late|early|well|badly|hard|easily|simply|directly|exactly|perfectly|completely|fully|hardly|scarcely|barely|nearly|almost|quite|rather|pretty|very|extremely|incredibly|amazingly|surprisingly|unfortunately|luckily|hopefully|honestly|seriously|obviously|clearly|apparently)ly?\b/gi,
-                    preposition: /\b(in|on|at|by|for|with|without|to|from|of|about|over|under|through|across|along|around|between|among|during|before|after|since|until|within|beyond|against|toward|towards|upon|beneath|above|below|inside|outside|beside|behind|ahead|throughout|despite|except|including|excluding|regarding|concerning|according)\b/gi,
-                    conjunction: /\b(and|or|but|so|yet|for|nor|because|since|as|if|unless|although|though|while|when|where|whereas|however|therefore|thus|moreover|furthermore|nevertheless|nonetheless|meanwhile|consequently|accordingly|hence|likewise|otherwise|instead|rather|besides|additionally|similarly|conversely|specifically|particularly|especially|notably|indeed|certainly|obviously|clearly|unfortunately|fortunately|surprisingly|interestingly)\b/gi,
-                    pronoun: /\b(I|me|my|mine|myself|you|your|yours|yourself|he|him|his|himself|she|her|hers|herself|it|its|itself|we|us|our|ours|ourselves|they|them|their|theirs|themselves|this|that|these|those|who|whom|whose|which|what|whoever|whomever|whatever|whichever|everyone|everybody|everything|someone|somebody|something|anyone|anybody|anything|no one|nobody|nothing|each|every|either|neither|both|all|some|any|many|much|few|little|several|one|two|three)\b/gi,
-                    determiner: /\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their|some|any|no|every|each|either|neither|much|many|few|little|several|all|both|half|double|such)\b/gi
-                };
-
-                this.commonMisspellings = {
-                    'color': 'colour', 'honor': 'honour', 'favor': 'favour', 'labor': 'labour', 'neighbor': 'neighbour',
-                    'center': 'centre', 'theater': 'theatre', 'liter': 'litre', 'meter': 'metre', 'fiber': 'fibre',
-                    'organize': 'organise', 'realize': 'realise', 'recognize': 'recognise', 'analyze': 'analyse', 'paralyze': 'paralyse',
-                    'defense': 'defence', 'offense': 'offence', 'license': 'licence', 'practice': 'practise', 'traveling': 'travelling',
-                    'canceled': 'cancelled', 'modeling': 'modelling', 'leveling': 'levelling', 'councilor': 'councillor',
-                    'counselor': 'counsellor', 'mold': 'mould', 'smolder': 'smoulder', 'gray': 'grey', 'pajamas': 'pyjamas',
-                    'tire': 'tyre', 'curb': 'kerb', 'story': 'storey', 'check': 'cheque', 'recieve': 'receive',
-                    'seperate': 'separate', 'definately': 'definitely', 'occured': 'occurred', 'necesary': 'necessary',
-                    'accomodate': 'accommodate', 'tommorrow': 'tomorrow', 'begining': 'beginning', 'writting': 'writing',
-                    'existance': 'existence', 'refering': 'referring', 'occurence': 'occurrence', 'independant': 'independent',
-                    'goverment': 'government', 'enviroment': 'environment', 'beleive': 'believe', 'reccommend': 'recommend',
-                    'embarass': 'embarrass', 'calender': 'calendar',
-                };
-
-                this.irregularPastParticiples = [
-                    'done', 'given', 'read', 'taken', 'made', 'written', 'seen', 'found', 'met', 'bought', 'thought', 'spoken'
-                ];
+        Sentence: "${sentence}"
+        
+        Example of desired output:
+        {
+          "posAnalysis": [
+            { "word": "The", "pos": "Determiner" },
+            { "word": "book", "pos": "Noun" },
+            { "word": "was", "pos": "Auxiliary Verb" },
+            { "word": "read", "pos": "Verb" },
+            { "word": "by", "pos": "Preposition" },
+            { "word": "the", "pos": "Determiner" },
+            { "word": "student", "pos": "Noun" }
+          ],
+          "grammarAnalysis": {
+            "voice": "Passive",
+            "isCompleteSentence": true,
+            "hasPunctuationErrors": false,
+            "summary": "The sentence is grammatically correct and uses the passive voice."
+          },
+          "spellingAnalysis": [
+            {
+              "misspelledWord": "seantence",
+              "suggestions": ["sentence", "sentience"]
             }
+          ],
+          "structuralAnalysis": [
+            { "type": "Independent Clause", "text": "The book was read by the student.", "function": "This is the main part of the sentence and can stand alone." },
+            { "type": "Noun Phrase", "text": "The book", "function": "Acts as the subject of the sentence." },
+            { "type": "Prepositional Phrase", "text": "by the student", "function": "Modifies the verb 'was read' by indicating the doer of the action." }
+          ]
+        }`;
 
-            analyze(text) {
-                if (!text.trim()) return null;
-
-                const wordCount = this.countWords(text);
-                if (wordCount > 60) {
-                    throw new Error(`Text exceeds 60-word limit. Current count: ${wordCount} words.`);
-                }
-
-                const sentences = this.splitIntoSentences(text);
-                const results = {
-                    originalText: text,
-                    wordCount: wordCount,
-                    sentences: sentences,
-                    spelling: this.checkSpelling(text),
-                    grammar: this.checkGrammar(text),
-                    partsOfSpeech: this.identifyPartsOfSpeech(text),
-                    voiceAnalysis: this.analyzeVoice(sentences),
-                    sentenceDiagrams: this.createSentenceDiagrams(sentences),
-                    statistics: this.generateStatistics(text, sentences)
-                };
-
-                return results;
-            }
-
-            countWords(text) {
-                return (text.match(/\b[\w']+\b/g) || []).length;
-            }
-
-            splitIntoSentences(text) {
-                return text.match(/[^\.!?]+[\.!?]+/g) || [text];
-            }
-
-            checkSpelling(text) {
-                const errors = [];
-                const words = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
-                
-                words.forEach((word, index) => {
-                    if (this.commonMisspellings[word]) {
-                        errors.push({
-                            word: word,
-                            suggestion: this.commonMisspellings[word],
-                            position: index,
-                            type: 'spelling'
-                        });
-                    }
-                });
-
-                return errors;
-            }
-
-            checkGrammar(text) {
-                const errors = [];
-                
-                if (text.includes('  ')) {
-                    errors.push({
-                        error: 'Multiple spaces found',
-                        suggestion: 'Use single spaces between words',
-                        type: 'spacing'
-                    });
-                }
-
-                const sentences = this.splitIntoSentences(text);
-                sentences.forEach((sentence, index) => {
-                    const trimmed = sentence.trim();
-                    if (trimmed.length > 0 && trimmed[0] !== trimmed[0].toUpperCase() && trimmed[0].match(/[a-z]/i)) {
-                        errors.push({
-                            error: `Sentence ${index + 1} should start with a capital letter`,
-                            suggestion: `Capitalize the first letter: "${trimmed[0].toUpperCase()}${trimmed.slice(1)}"`,
-                            type: 'capitalization'
-                        });
-                    }
-                });
-
-                return errors;
-            }
-
-            identifyPartsOfSpeech(text) {
-                const words = text.match(/\b[\w']+\b/g) || [];
-                const posResults = [];
-
-                words.forEach(word => {
-                    const lowerWord = word.toLowerCase();
-                    let pos = 'other';
-                    let posClass = 'pos-other';
-
-                    for (const [partOfSpeech, pattern] of Object.entries(this.posPatterns)) {
-                        if (pattern.test(lowerWord)) {
-                            pos = partOfSpeech;
-                            posClass = `pos-${partOfSpeech.substring(0, 4)}`;
-                            break;
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        "posAnalysis": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "word": { "type": "STRING" },
+                                    "pos": { "type": "STRING" }
+                                },
+                                "propertyOrdering": ["word", "pos"]
+                            }
+                        },
+                        "grammarAnalysis": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "voice": { "type": "STRING" },
+                                "isCompleteSentence": { "type": "BOOLEAN" },
+                                "hasPunctuationErrors": { "type": "BOOLEAN" },
+                                "summary": { "type": "STRING" }
+                            },
+                            "propertyOrdering": ["voice", "isCompleteSentence", "hasPunctuationErrors", "summary"]
+                        },
+                        "spellingAnalysis": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "misspelledWord": { "type": "STRING" },
+                                    "suggestions": { "type": "ARRAY", "items": { "type": "STRING" } }
+                                },
+                                "propertyOrdering": ["misspelledWord", "suggestions"]
+                            }
+                        },
+                        "structuralAnalysis": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "type": { "type": "STRING" },
+                                    "text": { "type": "STRING" },
+                                    "function": { "type": "STRING" }
+                                },
+                                "propertyOrdering": ["type", "text", "function"]
+                            }
                         }
-                    }
-
-                    if (word.match(/[\.!,;?]/)) {
-                        pos = 'punctuation';
-                        posClass = 'pos-punct';
-                    }
-
-                    posResults.push({
-                        word: word,
-                        pos: pos,
-                        class: posClass
-                    });
-                });
-
-                return posResults;
-            }
-
-            analyzeVoice(sentences) {
-                return sentences.map((sentence) => {
-                    const words = sentence.toLowerCase().match(/\b\w+\b/g) || [];
-                    let isPassive = false;
-
-                    // Simple check for passive voice: form of "to be" + past participle
-                    for (let i = 0; i < words.length - 1; i++) {
-                        const word = words[i];
-                        const nextWord = words[i + 1];
-
-                        if (
-                            ['is', 'am', 'are', 'was', 'were', 'be', 'being', 'been'].includes(word) &&
-                            (nextWord.endsWith('ed') || this.irregularPastParticiples.includes(nextWord))
-                        ) {
-                            isPassive = true;
-                            break;
-                        }
-                    }
-
-                    return {
-                        sentence: sentence.trim(),
-                        voice: isPassive ? 'passive' : 'active',
-                        explanation: isPassive ?
-                            'Contains an auxiliary verb + past participle pattern (e.g., "was read")' :
-                            'Subject performs the action directly'
-                    };
-                });
-            }
-
-            createSentenceDiagrams(sentences) {
-                // This is a highly simplified function and will not correctly diagram complex sentences.
-                // It is a placeholder for a more advanced parsing library.
-                return sentences.map((sentence) => {
-                    const words = sentence.trim().match(/\b[\w']+\b/g) || [];
-                    if (words.length === 0) return null;
-
-                    let subject = words[0] || 'Subject';
-                    let verb = '';
-                    let object = '';
-
-                    let verbIndex = -1;
-                    for (let i = 0; i < words.length; i++) {
-                        if (this.posPatterns.verb.test(words[i].toLowerCase())) {
-                            verbIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (verbIndex !== -1) {
-                        verb = words[verbIndex];
-                        if (verbIndex + 1 < words.length) {
-                            object = words.slice(verbIndex + 1).join(' ');
-                        }
-                    }
-
-                    if (verbIndex > 0) {
-                        subject = words.slice(0, verbIndex).join(' ');
-                    }
-
-                    const diagram = this.generateDiagramText(subject, verb, object);
-
-                    return {
-                        sentence: sentence.trim(),
-                        diagram: diagram,
-                        components: {
-                            subject: subject,
-                            verb: verb,
-                            object: object || 'none'
-                        }
-                    };
-                });
-            }
-
-            generateDiagramText(subject, verb, object) {
-                if (object) {
-                    return `
-    ${subject}
-        |
-    ___${verb}___
-        |
-    ${object}`;
-                } else {
-                    return `
-    ${subject}
-        |
-    ${verb}`;
+                    },
+                    "propertyOrdering": ["posAnalysis", "grammarAnalysis", "spellingAnalysis", "structuralAnalysis"]
                 }
             }
+        };
 
-            generateStatistics(text, sentences) {
-                const words = text.match(/\b[\w']+\b/g) || [];
-                const characters = text.length;
-                const charactersNoSpaces = text.replace(/\s/g, '').length;
-                const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim()).length || 1;
-                
-                const avgWordsPerSentence = sentences.length > 0 ?
-                    Math.round(words.length / sentences.length * 10) / 10 : 0;
-                
-                const avgCharsPerWord = words.length > 0 ?
-                    Math.round(charactersNoSpaces / words.length * 10) / 10 : 0;
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-                return {
-                    characters: characters,
-                    charactersNoSpaces: charactersNoSpaces,
-                    words: words.length,
-                    sentences: sentences.length,
-                    paragraphs: paragraphs,
-                    avgWordsPerSentence: avgWordsPerSentence,
-                    avgCharsPerWord: avgCharsPerWord
-                };
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error.message);
             }
+
+            const result = await response.json();
+            const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (jsonText) {
+                const parsedJson = JSON.parse(jsonText);
+                setAnalysis(parsedJson);
+            } else {
+                throw new Error("API response was empty or malformed.");
+            }
+        } catch (err) {
+            console.error("Error analysing sentence:", err);
+            setError(`Failed to analyse sentence: ${err.message}`);
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        class GrammarAnalyzerUI {
-            constructor() {
-                this.analyzer = new GrammarAnalyzer();
-                this.initializeEventListeners();
-                this.loadSampleText();
-            }
-
-            initializeEventListeners() {
-                const analyzeBtn = document.getElementById('analyzeBtn');
-                const textInput = document.getElementById('textInput');
-
-                textInput.addEventListener('input', () => {
-                    this.updateWordCount();
-                });
-
-                analyzeBtn.addEventListener('click', () => {
-                    this.analyzeText();
-                });
-
-                textInput.addEventListener('keypress', (e) => {
-                    if (e.ctrlKey && e.key === 'Enter') {
-                        this.analyzeText();
+    return (
+        <div className="min-h-screen bg-white text-gray-800 font-sans p-8 flex flex-col items-center">
+            <style>
+                {`
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+                    .font-sans {
+                        font-family: 'Inter', sans-serif;
                     }
-                });
-            }
-
-            loadSampleText() {
-                const textInput = document.getElementById('textInput');
-                textInput.value = "This is a sample sentence to test the grammar analyzer. there are some deliberate mistakes here. The book was read by the student yesterday. We organised the event at the centre.";
-                this.updateWordCount();
-            }
-
-            updateWordCount() {
-                const textInput = document.getElementById('textInput');
-                const wordCountElement = document.getElementById('wordCount');
-                const text = textInput.value.trim();
-                const wordCount = this.analyzer.countWords(text);
-                
-                wordCountElement.textContent = `${wordCount} / 60 words`;
-                
-                wordCountElement.classList.remove('warning', 'error');
-                if (wordCount > 60) {
-                    wordCountElement.classList.add('error');
-                } else if (wordCount > 50) {
-                    wordCountElement.classList.add('warning');
-                }
-            }
-
-            async analyzeText() {
-                const textInput = document.getElementById('textInput');
-                const text = textInput.value.trim();
-                
-                if (!text) {
-                    alert('Please enter some text to analyze.');
-                    return;
-                }
-
-                const wordCount = this.analyzer.countWords(text);
-                if (wordCount > 60) {
-                    alert(`Text exceeds 60-word limit. Please reduce to 60 words or fewer. Current count: ${wordCount} words.`);
-                    return;
-                }
-
-                this.showLoading(true);
-                
-                try {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    
-                    const results = this.analyzer.analyze(text);
-                    this.displayResults(results);
-                } catch (error) {
-                    alert(error.message);
-                } finally {
-                    this.showLoading(false);
-                }
-            }
-
-            showLoading(show) {
-                const loading = document.getElementById('loading');
-                const results = document.getElementById('results');
-                const analyzeBtn = document.getElementById('analyzeBtn');
-
-                loading.style.display = show ? 'block' : 'none';
-                results.style.display = show ? 'none' : 'grid';
-                analyzeBtn.disabled = show;
-            }
-
-            displayResults(results) {
-                const resultsContainer = document.getElementById('results');
-                resultsContainer.innerHTML = '';
-
-                resultsContainer.appendChild(this.createStatisticsCard(results.statistics));
-                resultsContainer.appendChild(this.createSpellingCard(results.spelling));
-                resultsContainer.appendChild(this.createGrammarCard(results.grammar));
-                resultsContainer.appendChild(this.createPartsOfSpeechCard(results.partsOfSpeech));
-                resultsContainer.appendChild(this.createVoiceAnalysisCard(results.voiceAnalysis));
-                resultsContainer.appendChild(this.createSentenceDiagramsCard(results.sentenceDiagrams));
-            }
-
-            createStatisticsCard(stats) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                card.innerHTML = `
-                    <h3 class="card-title"><span class="card-icon">📊</span> Statistics</h3>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.words}</div>
-                            <div class="stat-label">Words</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.sentences}</div>
-                            <div class="stat-label">Sentences</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.paragraphs}</div>
-                            <div class="stat-label">Paragraphs</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.avgWordsPerSentence}</div>
-                            <div class="stat-label">Words/Sentence</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-number">${stats.avgCharsPerWord}</div>
-                            <div class="stat-label">Chars/Word</div>
-                        </div>
+                    .tartan-button {
+                        background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 11px),
+                                          repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 11px),
+                                          linear-gradient(to right, #004d40 0 10%, #00897b 10% 20%, #4db6ac 20% 40%, #00897b 40% 50%, #4db6ac 50% 70%, #00897b 70% 80%, #004d40 80% 100%);
+                        background-size: 100% 100%;
+                        color: white;
+                        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+                        transition: all 0.3s ease;
+                    }
+                    .tartan-button:hover {
+                        background-size: 105% 105%;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                    }
+                    .tartan-button:disabled {
+                        background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 11px),
+                                          repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 11px),
+                                          linear-gradient(to right, #37474f 0 100%);
+                        cursor: not-allowed;
+                        box-shadow: none;
+                    }
+                `}
+            </style>
+            <div className="w-full max-w-2xl bg-gray-100 p-8 rounded-2xl shadow-xl space-y-6">
+                <h1 className="text-4xl font-bold text-center text-teal-600">Sentence Analyser</h1>
+                <p className="text-center text-gray-500">
+                    Enter a sentence for analysis.
+                </p>
+                <div className="flex flex-col space-y-4">
+                    <input
+                        type="text"
+                        value={sentence}
+                        onChange={(e) => setSentence(e.target.value)}
+                        className="w-full p-4 text-lg rounded-xl border border-gray-300 bg-gray-200 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-600"
+                        placeholder="Enter a sentence for analysis..."
+                    />
+                    <button
+                        onClick={handleAnalyse}
+                        disabled={isLoading || !sentence.trim()}
+                        className="w-full p-4 text-lg font-bold rounded-xl shadow-md tartan-button"
+                    >
+                        {isLoading ? (
+                            <div className="flex justify-center items-center">
+                                <svg className="animate-spin h-5 w-5 text-white mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Analysing...
+                            </div>
+                        ) : 'Analyse Sentence'}
+                    </button>
+                </div>
+                {error && (
+                    <div className="p-4 bg-red-200 text-red-800 rounded-xl">
+                        {error}
                     </div>
-                `;
-                return card;
-            }
-
-            createSpellingCard(spellingErrors) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `
-                    <h3 class="card-title"><span class="card-icon">📝</span> Spelling Suggestions</h3>
-                `;
-                if (spellingErrors.length > 0) {
-                    content += '<ul>';
-                    spellingErrors.forEach(err => {
-                        content += `<li class="suggestion-item"><strong>${err.word}</strong> &rarr; ${err.suggestion}</li>`;
-                    });
-                    content += '</ul>';
-                } else {
-                    content += '<p>No spelling suggestions found.</p>';
-                }
-                card.innerHTML = content;
-                return card;
-            }
-
-            createGrammarCard(grammarErrors) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `
-                    <h3 class="card-title"><span class="card-icon">⚠️</span> Grammar Issues</h3>
-                `;
-                if (grammarErrors.length > 0) {
-                    content += '<ul>';
-                    grammarErrors.forEach(err => {
-                        content += `<li class="error-item"><strong>${err.error}</strong> &rarr; ${err.suggestion}</li>`;
-                    });
-                    content += '</ul>';
-                } else {
-                    content += '<p>No grammar issues found.</p>';
-                }
-                card.innerHTML = content;
-                return card;
-            }
-
-            createPartsOfSpeechCard(posResults) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `
-                    <h3 class="card-title"><span class="card-icon">🏷️</span> Parts of Speech</h3>
-                    <p>
-                `;
-                posResults.forEach(item => {
-                    content += `<span class="pos-tag ${item.class}">${item.word} (${item.pos.charAt(0).toUpperCase()})</span>`;
-                });
-                content += '</p>';
-                card.innerHTML = content;
-                return card;
-            }
-
-            createVoiceAnalysisCard(voiceAnalysis) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `
-                    <h3 class="card-title"><span class="card-icon">🔊</span> Voice Analysis</h3>
-                `;
-                voiceAnalysis.forEach(item => {
-                    const voiceClass = item.voice === 'passive' ? 'voice-passive' : 'voice-active';
-                    content += `
-                        <div class="sentence-text">${item.sentence}</div>
-                        <div class="voice-indicator ${voiceClass}">
-                            Voice: ${item.voice.charAt(0).toUpperCase() + item.voice.slice(1)}
+                )}
+                {analysis && (
+                    <div className="mt-8 space-y-8">
+                        {analysis.spellingAnalysis && analysis.spellingAnalysis.length > 0 && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-teal-600 mb-4">Spelling Analysis:</h2>
+                                <div className="bg-gray-200 p-6 rounded-xl space-y-4">
+                                    {analysis.spellingAnalysis.map((error, index) => (
+                                        <div key={index}>
+                                            <p className="text-lg font-semibold text-red-600 mb-2">Misspelled word: <span className="font-bold">{error.misspelledWord}</span></p>
+                                            <p className="text-md text-gray-700">Did you mean?</p>
+                                            <ul className="list-disc list-inside ml-4 mt-1 space-y-1 text-gray-600">
+                                                {error.suggestions.map((suggestion, sIndex) => (
+                                                    <li key={sIndex}>{suggestion}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div>
+                            <h2 className="text-2xl font-bold text-teal-600 mb-4">Parts of Speech:</h2>
+                            <div className="flex flex-wrap gap-4 justify-center">
+                                {analysis.posAnalysis.map((item, index) => (
+                                    <div key={index} className="flex flex-col items-center p-4 bg-gray-200 rounded-xl shadow-md min-w-[120px]">
+                                        <span className="text-xl font-bold text-gray-800 mb-1">{item.word}</span>
+                                        <span className="text-sm font-semibold text-gray-600">{item.pos}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <small>${item.explanation}</small>
-                    `;
-                });
-                card.innerHTML = content;
-                return card;
-            }
+                        <div>
+                            <h2 className="text-2xl font-bold text-teal-600 mb-4">Grammatical Analysis:</h2>
+                            <div className="bg-gray-200 p-6 rounded-xl space-y-4">
+                                <div className="flex justify-between items-center text-lg">
+                                    <span className="font-semibold">Voice:</span>
+                                    <span className="text-gray-800">{analysis.grammarAnalysis.voice}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-lg">
+                                    <span className="font-semibold">Complete Sentence:</span>
+                                    <span className={`font-bold ${analysis.grammarAnalysis.isCompleteSentence ? 'text-green-600' : 'text-red-600'}`}>
+                                        {analysis.grammarAnalysis.isCompleteSentence ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-lg">
+                                    <span className="font-semibold">Punctuation Errors:</span>
+                                    <span className={`font-bold ${analysis.grammarAnalysis.hasPunctuationErrors ? 'text-red-600' : 'text-green-600'}`}>
+                                        {analysis.grammarAnalysis.hasPunctuationErrors ? 'Yes' : 'No'}
+                                    </span>
+                                </div>
+                                <div className="pt-4 border-t border-gray-300">
+                                    <p className="font-semibold mb-2">Summary:</p>
+                                    <p className="text-gray-700 text-md italic">{analysis.grammarAnalysis.summary}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {analysis.structuralAnalysis && analysis.structuralAnalysis.length > 0 && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-teal-600 mb-4">Structural Analysis:</h2>
+                                <div className="bg-gray-200 p-6 rounded-xl space-y-4">
+                                    {analysis.structuralAnalysis.map((structure, index) => (
+                                        <div key={index} className="border-b border-gray-300 pb-4 last:border-b-0 last:pb-0">
+                                            <p className="text-lg font-semibold text-gray-800 mb-1">{structure.type}: <span className="italic">{structure.text}</span></p>
+                                            <p className="text-md text-gray-700">{structure.function}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
-            createSentenceDiagramsCard(diagrams) {
-                const card = document.createElement('div');
-                card.className = 'result-card';
-                let content = `
-                    <h3 class="card-title"><span class="card-icon">🖼️</span> Simplified Sentence Diagram</h3>
-                `;
-                diagrams.forEach(item => {
-                    if (item) {
-                        content += `
-                            <div class="sentence-text">${item.sentence}</div>
-                            <pre class="diagram-container">${item.diagram}</pre>
-                        `;
-                    }
-                });
-                card.innerHTML = content;
-                return card;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            new GrammarAnalyzerUI();
-        });
-    </script>
-</body>
-</html>
+export default App;
