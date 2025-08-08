@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/sentenceanalyser/static/js/main.fbdd7ae9.js",
+    "main.js": "/sentenceanalyser/static/js/main.7fcd6ca1.js",
     "index.html": "/sentenceanalyser/index.html",
-    "main.fbdd7ae9.js.map": "/sentenceanalyser/static/js/main.fbdd7ae9.js.map"
+    "main.7fcd6ca1.js.map": "/sentenceanalyser/static/js/main.7fcd6ca1.js.map"
   },
   "entrypoints": [
-    "static/js/main.fbdd7ae9.js"
+    "static/js/main.7fcd6ca1.js"
   ]
 }
